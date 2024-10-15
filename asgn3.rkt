@@ -4,6 +4,8 @@
 
 (struct binopC ([ op : Any] [ l : ArithC] [r : ArithC] )#:transparent)
 (struct numC ([n : Real])#:transparent)
+(struct ifleq0 ([ test : ExprC ] [ if : ExprC ] [ else: ExprC])#:transparent)
+
 
 (define-type ArithC (U binopC numC))
 
