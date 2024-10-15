@@ -26,12 +26,48 @@
       (error 'lookup "AAQZ3 - Unsupported operation used ~a" op)))
 (check-equal? ((lookup '+) 3 5 ) 8)
 
+
+#|
+new lookup table - not using hash 
+(define (op-table-lookup op)
+  (match op
+    ['+ +]
+    ['- -]
+    ['/ /]
+    ['* *]
+;;    ['^ sqr]
+
+    [else (error "AAQZ unsupported op")]))
+|#
+
+
 ; This function interprets a given ExprC expression and returns the result.
 (define (interp [ a : ExprC ]) : Real
   (match a
     [ (numC n) n ]
     [ (binopC op l r) ( (lookup op) (interp l) (interp r)  )]
     [ (ifleq0? val) (error 'interp "ifleq0? is not implemented yet.")]))
+
+#| 
+
+new interp not using hash lookup
+
+(define (interp [ a : ExprC ]) : Real
+  (match a
+    [ (numC n) n ]
+    [ (binopC op l r) ((op-table-lookup op) (interp l) (interp r)  )]
+    [ (ifleq0? val) (error 'interp "AAQZ ifleq0? is not implemented yet.")]))
+
+test cases fro new interp
+
+(check-equal? (interp (binopC '+ (numC 3.0) (numC 4.0))) 7.0)
+(check-equal? (interp (binopC '- (numC 4.0) (numC 3.0))) 1.0)
+(check-equal? (interp (binopC '/ (numC 4.0) (numC 2.0))) 2.0)
+(check-equal? (interp (binopC '* (numC 3.0) (numC 4.0))) 12.0)
+
+(check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)))))
+(check-exn (regexp (regexp-quote "AAQZ ifleq0? is not implemented yet.")) (lambda () (interp (ifleq0? (numC 3.0)))))
+|#
 
 ; This function parses a passed in S-Expression into the Arith language.
 ; Input - S-Expression
