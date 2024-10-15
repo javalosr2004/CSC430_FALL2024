@@ -16,8 +16,13 @@
 
 (define plus-funct (hash-ref op-table '+))
 
+
 (define (lookup [op : Symbol] ) : Any
-  (error 'lookup "Not implemented yet"))
+     (define op-finder ( hash-ref op-table op #f))
+     (if op-finder
+         op-finder
+         (error 'lookup "AAQZ3 - Unsupported operation used ~a" op)))
+
 
 ; This function interprets a given ArithC expression and returns the result.
 (define (interp [ a : ArithC ]) : Real
