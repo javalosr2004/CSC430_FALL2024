@@ -102,6 +102,8 @@ test cases for new interp
 
 
 ; get func definition by name
+;input - a name for the func yooure looking for | the list of all functions available
+; output - the functiondef of the exisiting name
 (define (get-fundef [name : Symbol] [fdlst :  (Listof FunDefC) ] ) : FunDefC
   (cond
     [(empty? fdlst) (error 'get-fundef "AAQZ reference to func not supported ~e" name )]
@@ -118,11 +120,16 @@ test cases for new interp
 
 
 ;takes in single s exp and returns list of function definitions - part 5 :skull:
-(define (parse-prog [s : Sexp]) : (Listof FunctDefC)
+;Input - Sexp
+;Output - list of parsed function def - ready to be interped
+(define (parse-prog [s : Sexp]) : (Listof FunDefC)
   (match s
     [(list fundef ...) (map parse-fundefc fundef)]
     [_ (error 'parse-prog "AAQZ malformed list of func ~e" s)]))
-    
+
+;test case for parse-prog
+(check-equal? (parse-prog '({def f {(x) => x}}))
+              (list (FunDefC 'f '(x) (IdC 'x))))
 
 ; Test Cases for interp
 
