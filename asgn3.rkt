@@ -91,6 +91,13 @@ test cases for new interp
   (match s
     [ (list 'def (? symbol? name) (list (list (? symbol? args) ...) '=> body))
       (define cast_args (cast args (Listof Symbol))) ; Casting to list of symbols, as specified by matching.
+      <<<<<<< HEAD
+      =======
+
+      (when (not (equal? (length cast_args) (length (remove-duplicates cast_args))))  ;checking that no dup args are given - 3.2
+        (error 'parse-fundefc "AAQZ - Duplicate parameter names in function definition: ~e" s))
+
+      >>>>>>> 0ad832e1e32024359617a03eee4ecb75ef5054e9
       (FunDefC name cast_args (parser body))]
 
     [_ (error 'parse-fundefc "Malformed input: ~e" s)]))
@@ -115,11 +122,28 @@ test cases for new interp
     [_else (error 'Input "Malformed input, passed expression: ~e" sexp)]))
 
 
+
+; get func definition by name
+(define (get-fundef [name : Symbol] [fdlst :  (Listof FunDefC) ] ) : FunDefC
+  (cond
+    [(empty? fdlst) (error 'get-fundef "AAQZ reference to func not supported ~e" name )]
+    [(equal? name ( FunDefC-name (first fdlst))) (first fdlst)]
+    [else (get-fundef name (rest fdlst))]))
+
+
+
 ; This function accepts an s-expression and calls the parser and then the interp function.
 ; Input - Sexp
 ; Output - A real number that is the interpreted result from the Arith language
 (define (top-interp [sexp : Sexp] [fds : (Listof FunDefC)]) : Real
   (interp (parser sexp) fds))
+
+; Takes in single s exp and returns list of function definitions - part 5 :skull:
+(define (parse-prog [s : Sexp]) : (Listof FunctDefC)
+  (match s
+    [(list fundef ...) (map parse-fundefc fundef)]
+    [_ (error 'parse-prog "AAQZ malformed list of func ~e" s)]))
+
 
 ; Test Cases for interp
 
