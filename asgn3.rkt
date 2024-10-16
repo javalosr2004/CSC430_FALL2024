@@ -69,9 +69,20 @@ test cases for new interp
 ; Input - function body - ExprC
 ; Input - arguments to pass into - (Listof ExprC)
 ; Output - ExprC
-(define (subst [body : ExprC] [args : (Listof ExprC)]) : ExprC
-  (match body
-    []))
+(define (subst [what : (Listof ExprC)] [for : (Listof Symbol)] [in : ExprC]) : ExprC
+  (match in
+    [(numC n) in]
+    [(IdC s)
+     (define var_idx (index-of what s))
+     (cond
+       [(and #t var_idx) (list-ref what var_idx)]
+       [else in])]
+    [(AppC f a) (AppC f (subst what for a))]
+    [(binopC s l r) (binopC s (subst what for l)
+                            (subst what for r))]
+    ))
+
+
 
 ; This function parses function definitions in s-expression form to FunDefC.
 ; Input - S-Expression
