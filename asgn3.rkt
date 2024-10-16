@@ -65,6 +65,14 @@ test cases for new interp
 (check-exn (regexp (regexp-quote "AAQZ ifleq0? is not implemented yet.")) (lambda () (interp (ifleq0? (numC 3.0)))))
 |#
 
+; This function substitutes arguments into a function body.
+; Input - function body - ExprC
+; Input - arguments to pass into - (Listof ExprC)
+; Output - ExprC
+(define (subst [body : ExprC] [args : (Listof ExprC)]) : ExprC
+  (match body
+    []))
+
 ; This function parses function definitions in s-expression form to FunDefC.
 ; Input - S-Expression
 ; Output - FunDefC
