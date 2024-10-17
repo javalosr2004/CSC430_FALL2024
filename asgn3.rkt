@@ -135,6 +135,16 @@ test cases for new interp
         [ (list (list '/ l r))  (binopC '/ (parser l) (parser r))]
         [ (list (list 'ifleq0? test if_cond else_cond)) (ifleq0? (parser test) (parser if_cond) (parser else_cond))]
         [_else (AppC fun cast_args)])]
+    [  (list (? symbol? fun) args ...)
+       (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
+       (printf "Found appC ~e ~e \n" fun args)
+       (match sexp
+         [ (list (list '+ l r)) (binopC '+ (parser l) (parser r)) ]
+         [ (list (list '- l r)) (binopC '- (parser l) (parser r)) ]
+         [ (list (list '* l r)) (binopC '* (parser l) (parser r)) ]
+         [ (list (list '/ l r))  (binopC '/ (parser l) (parser r))]
+         [ (list (list 'ifleq0? test if_cond else_cond)) (ifleq0? (parser test) (parser if_cond) (parser else_cond))]
+         [_else (AppC fun cast_args)])]
     [_else (error 'Input "Malformed input, passed expression: ~e" sexp)]))
 
 
@@ -199,4 +209,4 @@ test cases for new interp
 ; (check-equal? (top-interp '{ifleq0? 1 1 0}) 0)
 ; (check-equal? (top-interp '{- 10 {^2 3}}) 1)
 ; (top-interp '{{def fun {() => {+ 5 5}}} {def main {() => {{ifleq0? -1 {+ 4 4} {+ 1 2}}}}}})
-(top-interp '{{def fun {(x) => {+ x 5}}} {def main {() => {{fun 5}}}}})
+(top-interp '{{def fun {(x) => {+ x 5}}} {def main {() => {{+ {fun {fun 5}} 5}}}}})
