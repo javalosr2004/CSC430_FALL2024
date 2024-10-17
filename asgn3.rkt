@@ -138,14 +138,15 @@ test cases for new interp
 ; This function interprets the function named main from the fundefs.
 ; Input - Funtion definitions.
 ; Output - Real
-(define (interp-fns [funs : (Listof FunDefC)]) : Real
-  (define main_index (index-of funs 'main main-checker))
-  (
-   if (false? main_index)
-      (error 'interp-fns "Main not found in function definitions of ~e" funs)
-      (
-       interp (list-ref funs main_index))
-      ))
+
+(define (interp-fns [funs : (Listof  FunDefC)]) : Real
+  (define main-fns (get-fundef 'main funs))
+  (when ( not (empty? (FunDefC-args main-fns)))
+      (error 'interp-fns "AAQZ main function needs zero arguments"))
+      (interp (AppC 'main empty) funs))
+
+
+
 
 ; This function accepts an s-expression and calls the parser and then the interp function.
 ; Input - Sexp
