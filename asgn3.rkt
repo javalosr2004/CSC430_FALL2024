@@ -13,6 +13,8 @@
 (struct AppC ([fun : Symbol] [args : (Listof ExprC)])#:transparent)
 (struct IdC ([id : Symbol]) #:transparent)
 
+(define binop-symbols '(+ - / *))
+
 ; This function finds the corresponding binary operation based on symbol passed.
 ; Input - Symbol
 ; Output - Function
@@ -67,6 +69,7 @@
 (define (parse-fundef [s : Sexp]) : FunDefC
   (match s
     [ (list 'def (? symbol? name) (list (list (? symbol? args) ...) '=> body))
+      #:when (not (member name binop-symbols))
       (define cast_args (cast args (Listof Symbol))) ; Casting to list of symbols, as specified by matching.
       ;checking that no dup args are given - 3.2
       (when (not (equal? (length cast_args) (length (remove-duplicates cast_args))))
@@ -85,8 +88,12 @@
 ; Output - ExprC
 (define (parse [sexp : Sexp]) : ExprC
   (match sexp
-    [(or '+ '- '* '/) (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
-    [(list (or '+ '- '* '/) _l) (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
+    [(? symbol? s)
+     #:when (member s binop-symbols)
+     (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
+    [(list op _l)
+     #:when (member op binop-symbols)
+     (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
     [(list (or '+ '- '* '/) args ...) (parse-binop (first sexp) args)]
     [ (? real? n) (numC n)]
     [(? symbol? s) (IdC s)]
@@ -203,6 +210,8 @@
 ; Test cases for parse-fundef
 (check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
            (lambda () (parse-fundef '{def funny {(x y x) => {+ x y}}})))
+
+(parse-fundef '{def + {{} => 13}})
 
 ; Test Cases for top-interp
 ; (check-equal? (top-interp '{+ 1 2}) 3)
