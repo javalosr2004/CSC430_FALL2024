@@ -136,8 +136,8 @@
 (check-equal? (subst (list (numC 4)) '(y) (binopC '+ (IdC 'y) ( IdC 'y))) (binopC '+ (numC 4) (numC 4)))
 (check-equal? (subst (list (numC 12)) '(f) (IdC 'z)) (IdC 'z))
 (check-equal? (subst (list (numC 20) (numC 10)) '(x y)
-         (binopC '* (IdC 'y) (IdC 'x)))
-  (binopC '* (numC 10) (numC 20))) 
+                     (binopC '* (IdC 'y) (IdC 'x)))
+              (binopC '* (numC 10) (numC 20))) 
 
 (check-equal? (subst (list (numC -5) (numC 1) (numC 0))
                      (list 'a 'b 'c)
@@ -184,11 +184,11 @@
 (check-equal? (lookup '/) /)
 (check-equal? (lookup '-) -)
 (check-exn (regexp (regexp-quote "AAQZ unsupported op of"))
-            (lambda () (lookup 's )))
+           (lambda () (lookup 's )))
 
 ; Test cases for parse-fundef
 (check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
-            (lambda () (parse-fundefc '{def funny {(x y x) => {+ x y}}})))
+           (lambda () (parse-fundefc '{def funny {(x y x) => {+ x y}}})))
 
 ; Test Cases for top-interp
 ; (check-equal? (top-interp '{+ 1 2}) 3)
