@@ -25,7 +25,7 @@
     [_else (error 'binary-operation "AAQZ unsupported op of ~e" op)]))
 
 
-; This function interprets a given ExprC expression and returns the result.
+; This function interprets a given ExprC expression and returns the result. 
 (define (interp [ a : ExprC ] [ fds : (Listof FunDefC)]) : Real
   (match a
     [ (numC n) n ]
@@ -114,7 +114,7 @@
       (error 'interp-fns "Main not found in function definitions of ~e" funs)
       (interp  (FunDefC-body (list-ref funs main_index)) funs)))
 
-; This function accepts an s-expression and calls the parser and then the interp function.
+; This function accepts an s-expression and calls the parser and then the interp function. 
 ; Input - Sexp
 ; Output - A real number that is the interpreted result from the Arith language
 ; (define (top-interp [sexp : Sexp]) : Real
@@ -129,6 +129,20 @@
     [(list fundef ...) (map parse-fundefc fundef)]
     [_ (error 'parse-prog "AAQZ malformed list of func ~e" s)]))
 
+
+
+; Test Cases for subst
+(check-equal? (subst (list (numC 3)) '(x) (IdC 'x ) ) (numC 3) )
+(check-equal? (subst (list (numC 4)) '(y) (binopC '+ (IdC 'y) ( IdC 'y))) (binopC '+ (numC 4) (numC 4)))
+(check-equal? (subst (list (numC 12)) '(f) (IdC 'z)) (IdC 'z))
+(check-equal? (subst (list (numC 20) (numC 10)) '(x y)
+         (binopC '* (IdC 'y) (IdC 'x)))
+  (binopC '* (numC 10) (numC 20))) 
+
+(check-equal? (subst (list (numC -5) (numC 1) (numC 0))
+                     (list 'a 'b 'c)
+                     (ifleq0?  (IdC 'a) (IdC 'b) (IdC 'c)))
+              (ifleq0?  (numC -5) (numC 1) (numC 0)))
 
 ; Example definitions
 (define fun-ex-1 (parse-fundefc '{def fun-ex-1 {() => {+ 1 1}}}))
@@ -162,6 +176,27 @@
 ; Test Cases for interp-fns
 (check-exn (regexp (regexp-quote "Main not found in function definitions of")) (lambda () (interp-fns (list fun-ex-1))))
 
+; Test Cases for lookup
+(check-equal? (lookup '+) +)
+(check-equal? ((lookup '+) 5 7) 12)
+(check-equal? (lookup '*) *)
+(check-equal? ((lookup '*) 3 2) 6)
+(check-equal? (lookup '/) /)
+(check-equal? (lookup '-) -)
+(check-exn (regexp (regexp-quote "AAQZ unsupported op of"))
+            (lambda () (lookup 's )))
+           
+; Test Cases for 
+; Test Cases for top-interp
+; (check-equal? (top-interp '{+ 1 2}) 3)
+; (check-equal? (top-interp '{* 1 {+ 2 3}} ) 5)
+; (check-equal? (top-interp '{- 9 {+ 2 3}}) 4)
+; (check-equal? (top-interp '{ifleq0? -1 1 0}) 1)
+; (check-equal? (top-interp '{ifleq0? 1 1 0}) 0)
+; (check-equal? (top-interp '{- 10 {^2 3}}) 1)
+; (top-interp '{{def fun {() => {+ 5 5}}} {def main {() => {{ifleq0? -1 {+ 4 4} {+ 1 2}}}}}})
+(check-equal? (top-interp '{{def fun {(x y z) => {+ {+ x y} z}}} {def main {() => {+ {fun 3 3 3} {fun 3 4 5}}}}}) 21)
+
 ; Test Cases for get-fundefc
 (check-exn (regexp (regexp-quote "AAQZ reference to func not supported")) (lambda () (get-fundef 'funny (list fun-ex-1))))
 
@@ -174,3 +209,4 @@
 (check-equal? (top-interp '{{def fun {() => {+ 5 5}}} {def main {() => {fun}}}}) 10)
 (check-equal? (top-interp '{{def fun {(x y z) => {+ {+ x y} z}}} {def main {() => {+ {fun 3 3 3} {fun 3 4 5}}}}}) 21)
 (check-equal? (top-interp '{{def main {() => {+ 9 {+ 2 {+ 3 2}}}}}}) 16)
+
