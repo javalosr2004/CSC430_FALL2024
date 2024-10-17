@@ -85,6 +85,8 @@
 ; Output - ExprC
 (define (parse [sexp : Sexp]) : ExprC
   (match sexp
+    [(or '+ '- '* '/) (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
+    [(list (or '+ '- '* '/) _l) (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
     [(list (or '+ '- '* '/) args ...) (parse-binop (first sexp) args)]
     [ (? real? n) (numC n)]
     [(? symbol? s) (IdC s)]
@@ -120,7 +122,7 @@
   (define main_index (index-of funs 'main main-checker))
   (
    if (false? main_index)
-      (error 'interp-fns "AQQZ - Main not found in function definitions of ~e" funs)
+      (error 'interp-fns "AAQZ - Main not found in function definitions of ~e" funs)
       (interp  (FunDefC-body (list-ref funs main_index)) funs)))
 
 ; This function accepts an s-expression and calls the parse and then the interp function.
@@ -176,7 +178,7 @@
 (check-equal? (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
 (check-equal? (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
 (check-equal? (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
-(check-exn (regexp (regexp-quote "AAQZ Malformed input, passed expression:")) (lambda () (parse '{2 3})))
+(check-exn (regexp (regexp-quote "AAQZ - Malformed input, passed expression:")) (lambda () (parse '{2 3})))
 (check-exn (regexp (regexp-quote "AAQZ wrong number of arguments given")) (lambda () (parse '{/ 2 3 3})))
 
 
@@ -185,7 +187,7 @@
 (check-exn (regexp (regexp-quote "AAQZ malformed list of func")) (lambda () (parse-prog '4)))
 
 ; Test Cases for interp-fns
-(check-exn (regexp(regexp-quote "AAQZ Main not found in function definitions of"))
+(check-exn (regexp(regexp-quote "AAQZ - Main not found in function definitions of"))
            (lambda () (interp-fns (list fun-ex-1))))
 
 ; Test Cases for lookup
@@ -215,10 +217,8 @@
 ; Test Cases for get-fundefc
 (check-exn (regexp (regexp-quote "AAQZ reference to func not supported"))
            (lambda () (get-fundef 'funny (list fun-ex-1))))
-(check-exn(regexp (regexp-quote "AAQZ Malformed input"))
+(check-exn(regexp (regexp-quote "AAQZ - Malformed input"))
           (lambda () (parse-fundef '(def funny (x x => (+ x x))))))
-
-(parse '(+ / 3))
 
 
 ; Test Cases for top-interp
