@@ -185,8 +185,11 @@
 (check-equal? (lookup '-) -)
 (check-exn (regexp (regexp-quote "AAQZ unsupported op of"))
             (lambda () (lookup 's )))
-           
-; Test Cases for 
+
+; Test cases for parse-fundef
+(check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
+            (lambda () (parse-fundefc '{def funny {(x y x) => {+ x y}}})))
+
 ; Test Cases for top-interp
 ; (check-equal? (top-interp '{+ 1 2}) 3)
 ; (check-equal? (top-interp '{* 1 {+ 2 3}} ) 5)
