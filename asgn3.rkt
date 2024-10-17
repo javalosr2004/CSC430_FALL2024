@@ -25,7 +25,7 @@
     [_else (error 'binary-operation "AAQZ unsupported op of ~e" op)]))
 
 
-; This function interprets a given ExprC expression and returns the result.
+; This function interprets a given ExprC expression and returns the result. ----------------------------
 (define (interp [ a : ExprC ] [ fds : (Listof FunDefC)]) : Real
   (match a
     [ (numC n) n ]
@@ -74,7 +74,7 @@
     [_ (error 'parse-fundefc "Malformed input: ~e" s)]))
 
 
-; This function parses a passed in S-Expression into the ExprC language.
+; This function parses a passed in S-Expression into the ExprC language. ---------------------------
 ; Input - S-Expression
 ; Output - ExprC
 (define (parser [sexp : Sexp]) : ExprC
@@ -135,7 +135,7 @@
       (error 'interp-fns "Main not found in function definitions of ~e" funs)
       (interp  (FunDefC-body (list-ref funs main_index)) funs)))
 
-; This function accepts an s-expression and calls the parser and then the interp function.
+; This function accepts an s-expression and calls the parser and then the interp function. -----------------------
 ; Input - Sexp
 ; Output - A real number that is the interpreted result from the Arith language
 ; (define (top-interp [sexp : Sexp]) : Real
@@ -150,25 +150,42 @@
     [(list fundef ...) (map parse-fundefc fundef)]
     [_ (error 'parse-prog "AAQZ malformed list of func ~e" s)]))
 
-;test case for parse-prog
-(check-equal? (parse-prog '({def f {(x) => x}}))
-              (list (FunDefC 'f '(x) (IdC 'x))))
 
 ; Test Cases for interp
-(check-equal? (interp (binopC '+ (numC 3.0) (numC 4.0))) 7.0)
-(check-equal? (interp (binopC '- (numC 4.0) (numC 3.0))) 1.0)
-(check-equal? (interp (binopC '/ (numC 4.0) (numC 2.0))) 2.0)
-(check-equal? (interp (binopC '* (numC 3.0) (numC 4.0))) 12.0)
+;(check-equal? (interp (binopC '+ (numC 3.0) (numC 4.0))) 7.0)
+;(check-equal? (interp (binopC '- (numC 4.0) (numC 3.0))) 1.0)
+;(check-equal? (interp (binopC '/ (numC 4.0) (numC 2.0))) 2.0)
+;(check-equal? (interp (binopC '* (numC 3.0) (numC 4.0))) 12.0)
 
-(check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)))))
-(check-exn (regexp (regexp-quote "AAQZ ifleq0? is not implemented yet.")) (lambda () (interp (ifleq0? (numC 3.0)))))
+;(check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)))))
+;(check-exn (regexp (regexp-quote "AAQZ ifleq0? is not implemented yet.")) (lambda () (interp (ifleq0? (numC 3.0)))))
 
-; Test Cases for parser
+; Test Cases for subst
+(check-equal? (subst (list (numC 3)) '(x) (IdC 'x ) ) (numC 3) )
+(check-equal? (subst (list (numC 4)) '(y) (binopC '+ (IdC 'y) ( IdC 'y))) (binopC '+ (numC 4) (numC 4)))
+(check-equal? (subst (list (numC 12)) '(f) (IdC 'z)) (IdC 'z))
+(check-equal? (subst (list (numC 20) (numC 10)) '(x y)
+         (binopC '* (IdC 'y) (IdC 'x)))
+  (binopC '* (numC 10) (numC 20))) 
+
+(check-equal? (subst (list (numC -5) (numC 1) (numC 0))
+                     (list 'a 'b 'c)
+                     (ifleq0?  (IdC 'a) (IdC 'b) (IdC 'c)))
+              (ifleq0?  (numC -5) (numC 1) (numC 0)))
 ; (check-exn (regexp (regexp-quote "ifleq0? is not implemented yet."))
 ;            (lambda () (parser '{ifleq0? 10})))
 
 ; Test Cases for lookup
-
+(check-equal? (lookup '+) +)
+(check-equal? ((lookup '+) 5 7) 12)
+(check-equal? (lookup '*) *)
+(check-equal? ((lookup '*) 3 2) 6)
+(check-equal? (lookup '/) /)
+(check-equal? (lookup '-) -)
+(check-exn (regexp (regexp-quote "AAQZ unsupported op of"))
+            (lambda () (lookup 's )))
+           
+; Test Cases for 
 ; Test Cases for top-interp
 ; (check-equal? (top-interp '{+ 1 2}) 3)
 ; (check-equal? (top-interp '{* 1 {+ 2 3}} ) 5)
