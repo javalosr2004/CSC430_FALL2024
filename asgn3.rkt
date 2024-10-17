@@ -80,13 +80,17 @@ test cases for new interp
   (match in
     [(numC _n) in]
     [(IdC s)
-     (define var_idx (index-of what s))
+     ;  (printf "Value of what: ~e. Value for: ~e. Value for in: ~e\n" what for in )
+     (define var_idx (index-of for s))
      (cond
-       [(and #t var_idx) (list-ref what var_idx)]
-       [else in])]
+       [(false? var_idx) in]
+       [else (list-ref what var_idx)])]
     [(AppC f a) (AppC f (map (lambda (x) (subst what for (cast x ExprC))) a))] ; Could be making unneccesary calls.
     [(binopC s l r) (binopC s (subst what for l)
                             (subst what for r))]
+    [(ifleq0? test if_cond else_cond) (ifleq0? (subst what for test)
+                                               (subst what for if_cond)
+                                               (subst what for else_cond))]
     ))
 
 
@@ -110,27 +114,47 @@ test cases for new interp
   (match sexp
     [ (? real? n) (numC n)]
     [(? symbol? s) (IdC s)]
-    [ (list (? symbol? s) r ...) (AppC s (parser r))] ; Only handles one function call...
     [ (list '+ l r) (binopC '+ (parser l) (parser r)) ]
     [ (list '- l r) (binopC '- (parser l) (parser r)) ]
     [ (list '* l r) (binopC '* (parser l) (parser r)) ]
     [ (list '/ l r) (binopC '/ (parser l) (parser r)) ]
     [ (list 'ifleq0? test if_cond else_cond) (ifleq0? (parser test) (parser if_cond) (parser else_cond))]
     [ (list 'def _r ...) (parse-fundefc sexp)] ; Duplicate matching???? r is used to symbolize that there are properties left.
-    [ (list (? symbol? fun) (list args ...))
+    ; [ (list (list (? symbol? fun) args ...) r ...)
+    ;   (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
+    ;   (printf "Found appC ~e ~e" fun args)
+    ;   ;   (cons (AppC fun cast_args) (parser r))]
+    ;   (AppC fun cast_args)]
+    [ (list (list (? symbol? fun) args ...))
       (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
-      (AppC fun cast_args)]
+      (printf "Found appC ~e ~e \n" fun args)
+      (match sexp
+        [ (list (list '+ l r)) (binopC '+ (parser l) (parser r)) ]
+        [ (list (list '- l r)) (binopC '- (parser l) (parser r)) ]
+        [ (list (list '* l r)) (binopC '* (parser l) (parser r)) ]
+        [ (list (list '/ l r))  (binopC '/ (parser l) (parser r))]
+        [ (list (list 'ifleq0? test if_cond else_cond)) (ifleq0? (parser test) (parser if_cond) (parser else_cond))]
+        [_else (AppC fun cast_args)])]
     [_else (error 'Input "Malformed input, passed expression: ~e" sexp)]))
 
 
 
 ; Get func definition by name.
-(define (get-fundef [name : Symbol] [fdlst :  (Listof FunDefC) ] ) : FunDefC
-  (cond
-    [(empty? fdlst) (error 'get-fundef "AAQZ reference to func not supported ~e" name )]
-    [(equal? name ( FunDefC-name (first fdlst))) (first fdlst)]
-    [else (get-fundef name (rest fdlst))]))
+; (define (get-fundef [name : Symbol] [fdlst :  (Listof FunDefC) ] ) : FunDefC
+; (printf "Function name ~e ~e\n" name (FunDefC-name (first fdlst)))
+;   (cond
+;     [(empty? fdlst) (error 'get-fundef "AAQZ reference to func not supported ~e" name )]
+;     [(equal? name ( FunDefC-name (first fdlst))) (first fdlst)]
+;     [else (get-fundef name (rest fdlst))]))
 
+(define (get-fundef [name : Symbol] [fdlst : (Listof FunDefC)]) : FunDefC
+  (if (empty? fdlst)
+      (error 'get-fundef "AAQZ reference to func not supported ~e" name)
+      (let ([current-fundef (first fdlst)])
+        (printf "Function name ~e ~e\n" name (FunDefC-name current-fundef))
+        (if (equal? name (FunDefC-name current-fundef))
+            current-fundef
+            (get-fundef name (rest fdlst))))))
 
 (define main-checker (lambda ([fun : FunDefC] [val : Symbol]) (symbol=? (FunDefC-name fun) val)))
 ; This function interprets the function named main from the fundefs.
@@ -141,9 +165,7 @@ test cases for new interp
   (
    if (false? main_index)
       (error 'interp-fns "Main not found in function definitions of ~e" funs)
-      (
-       interp (list-ref funs main_index))
-      ))
+      (interp  (FunDefC-body (list-ref funs main_index)) funs)))
 
 ; This function accepts an s-expression and calls the parser and then the interp function.
 ; Input - Sexp
@@ -176,4 +198,5 @@ test cases for new interp
 ; (check-equal? (top-interp '{ifleq0? -1 1 0}) 1)
 ; (check-equal? (top-interp '{ifleq0? 1 1 0}) 0)
 ; (check-equal? (top-interp '{- 10 {^2 3}}) 1)
-(top-interp '{{def hello {() => {+ 5 5}}} {def main {() => {x}}}})
+; (top-interp '{{def fun {() => {+ 5 5}}} {def main {() => {{ifleq0? -1 {+ 4 4} {+ 1 2}}}}}})
+(top-interp '{{def fun {(x) => {+ x 5}}} {def main {() => {{fun 5}}}}})
