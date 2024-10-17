@@ -1,3 +1,5 @@
+; We completed this assignment.
+
 #lang typed/racket
 
 (require typed/rackunit)
@@ -11,21 +13,9 @@
 (struct AppC ([fun : Symbol] [args : (Listof ExprC)]))
 (struct IdC ([id : Symbol]) #:transparent)
 
-; (define op-table
-;   (make-immutable-hash
-;    (list (cons '+ +)
-;          (cons '/ /)
-;          (cons '* *)
-;          (cons '^2 sqr))))
-
-
-; (define (lookup [op : Symbol] ) : (-> Real Real Real)
-;   (define op-finder ( hash-ref op-table op #f))
-;   (if op-finder
-;       op-finder
-;       (error 'lookup "AAQZ3 - Unsupported operation used ~a" op)))
-
-; new lookup table - not using hash
+; This function finds the corresponding binary operation based on symbol passed.
+; Input - Symbol
+; Output - Function
 (define (lookup op)
   (match op
     ['+ +]
@@ -40,8 +30,6 @@
   (match a
     [ (numC n) n ]
     [ (binopC op l r) ( (lookup op) (interp l fds) (interp r fds)  )]
-    ; [ (ifleq0? test if_cond else_cond) (error 'interp "ifleq0? is not implemented yet.")]
-
     [ (ifleq0? test if_cond else_cond) (if (<= (interp test fds) 0) (interp if_cond fds) (interp else_cond fds))]
     ; Taken from seciton 5.4
     [(AppC f a) (define fd (get-fundef f fds))
@@ -50,27 +38,6 @@
                                (FunDefC-body fd))
                         fds)]
     [_else (error 'interp "Method not implemented yet, passed value: ~e" a)]))
-
-#|
-
-new interp not using hash lookup
-
-(define (interp [ a : ExprC ]) : Real
-  (match a
-    [ (numC n) n ]
-    [ (binopC op l r) ((op-table-lookup op) (interp l) (interp r)  )]
-    [ (ifleq0? val) (error 'interp "AAQZ ifleq0? is not implemented yet.")]))
-
-test cases for new interp
-
-(check-equal? (interp (binopC '+ (numC 3.0) (numC 4.0))) 7.0)
-(check-equal? (interp (binopC '- (numC 4.0) (numC 3.0))) 1.0)
-(check-equal? (interp (binopC '/ (numC 4.0) (numC 2.0))) 2.0)
-(check-equal? (interp (binopC '* (numC 3.0) (numC 4.0))) 12.0)
-
-(check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)))))
-(check-exn (regexp (regexp-quote "AAQZ ifleq0? is not implemented yet.")) (lambda () (interp (ifleq0? (numC 3.0)))))
-|#
 
 ; This function substitutes arguments into a function body.
 ; Input - function body - ExprC
@@ -127,7 +94,6 @@ test cases for new interp
     ;   (AppC fun cast_args)]
     [ (list (list (? symbol? fun) args ...))
       (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
-      (printf "Found appC ~e ~e \n" fun args)
       (match sexp
         [ (list (list '+ l r)) (binopC '+ (parser l) (parser r)) ]
         [ (list (list '- l r)) (binopC '- (parser l) (parser r)) ]
@@ -137,7 +103,6 @@ test cases for new interp
         [_else (AppC fun cast_args)])]
     [  (list (? symbol? fun) args ...)
        (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
-       (printf "Found appC ~e ~e \n" fun args)
        (match sexp
          [ (list (list '+ l r)) (binopC '+ (parser l) (parser r)) ]
          [ (list (list '- l r)) (binopC '- (parser l) (parser r)) ]
@@ -150,22 +115,15 @@ test cases for new interp
 
 
 ; Get func definition by name.
-; (define (get-fundef [name : Symbol] [fdlst :  (Listof FunDefC) ] ) : FunDefC
-; (printf "Function name ~e ~e\n" name (FunDefC-name (first fdlst)))
-;   (cond
-;     [(empty? fdlst) (error 'get-fundef "AAQZ reference to func not supported ~e" name )]
-;     [(equal? name ( FunDefC-name (first fdlst))) (first fdlst)]
-;     [else (get-fundef name (rest fdlst))]))
-
 (define (get-fundef [name : Symbol] [fdlst : (Listof FunDefC)]) : FunDefC
   (if (empty? fdlst)
       (error 'get-fundef "AAQZ reference to func not supported ~e" name)
       (let ([current-fundef (first fdlst)])
-        (printf "Function name ~e ~e\n" name (FunDefC-name current-fundef))
         (if (equal? name (FunDefC-name current-fundef))
             current-fundef
             (get-fundef name (rest fdlst))))))
 
+; Helper to check if function passed is equal to the symbol.
 (define main-checker (lambda ([fun : FunDefC] [val : Symbol]) (symbol=? (FunDefC-name fun) val)))
 ; This function interprets the function named main from the fundefs.
 ; Input - Funtion definitions.
@@ -194,6 +152,13 @@ test cases for new interp
 
 
 ; Test Cases for interp
+(check-equal? (interp (binopC '+ (numC 3.0) (numC 4.0))) 7.0)
+(check-equal? (interp (binopC '- (numC 4.0) (numC 3.0))) 1.0)
+(check-equal? (interp (binopC '/ (numC 4.0) (numC 2.0))) 2.0)
+(check-equal? (interp (binopC '* (numC 3.0) (numC 4.0))) 12.0)
+
+(check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)))))
+(check-exn (regexp (regexp-quote "AAQZ ifleq0? is not implemented yet.")) (lambda () (interp (ifleq0? (numC 3.0)))))
 
 ; Test Cases for parser
 ; (check-exn (regexp (regexp-quote "ifleq0? is not implemented yet."))
@@ -209,4 +174,4 @@ test cases for new interp
 ; (check-equal? (top-interp '{ifleq0? 1 1 0}) 0)
 ; (check-equal? (top-interp '{- 10 {^2 3}}) 1)
 ; (top-interp '{{def fun {() => {+ 5 5}}} {def main {() => {{ifleq0? -1 {+ 4 4} {+ 1 2}}}}}})
-(top-interp '{{def fun {(x) => {+ x 5}}} {def main {() => {{+ {fun {fun 5}} 5}}}}})
+(check-equal? (top-interp '{{def fun {(x y z) => {+ {+ x y} z}}} {def main {() => {+ {fun 3 3 3} {fun 3 4 5}}}}}) 21)
