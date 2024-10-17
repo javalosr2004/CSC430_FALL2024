@@ -41,7 +41,14 @@
     [ (numC n) n ]
     [ (binopC op l r) ( (lookup op) (interp l fds) (interp r fds)  )]
     ; [ (ifleq0? test if_cond else_cond) (error 'interp "ifleq0? is not implemented yet.")]
+
     [ (ifleq0? test if_cond else_cond) (if (<= (interp test fds) 0) (interp if_cond fds) (interp else_cond fds))]
+    ; Taken from seciton 5.4
+    [(AppC f a) (define fd (get-fundef f fds))
+                (interp (subst a
+                               (FunDefC-args fd)
+                               (FunDefC-body fd))
+                        fds)]
     [_else (error 'interp "Method not implemented yet, passed value: ~e" a)]))
 
 #|
@@ -65,6 +72,24 @@ test cases for new interp
 (check-exn (regexp (regexp-quote "AAQZ ifleq0? is not implemented yet.")) (lambda () (interp (ifleq0? (numC 3.0)))))
 |#
 
+; This function substitutes arguments into a function body.
+; Input - function body - ExprC
+; Input - arguments to pass into - (Listof ExprC)
+; Output - ExprC
+(define (subst [what : (Listof ExprC)] [for : (Listof Symbol)] [in : ExprC]) : ExprC
+  (match in
+    [(numC _n) in]
+    [(IdC s)
+     (define var_idx (index-of what s))
+     (cond
+       [(and #t var_idx) (list-ref what var_idx)]
+       [else in])]
+    [(AppC f a) (AppC f (map (lambda (x) (subst what for (cast x ExprC))) a))] ; Could be making unneccesary calls.
+    [(binopC s l r) (binopC s (subst what for l)
+                            (subst what for r))]
+    ))
+
+
 ; This function parses function definitions in s-expression form to FunDefC.
 ; Input - S-Expression
 ; Output - FunDefC
@@ -72,12 +97,9 @@ test cases for new interp
   (match s
     [ (list 'def (? symbol? name) (list (list (? symbol? args) ...) '=> body))
       (define cast_args (cast args (Listof Symbol))) ; Casting to list of symbols, as specified by matching.
-      
-      (when (not (equal? (length cast_args) (length (remove-duplicates cast_args))))  ;checking that no dup args are given - 3.2 
+      (when (not (equal? (length cast_args) (length (remove-duplicates cast_args))))  ;checking that no dup args are given - 3.2
         (error 'parse-fundefc "AAQZ - Duplicate parameter names in function definition: ~e" s))
-      
       (FunDefC name cast_args (parser body))]
-
     [_ (error 'parse-fundefc "Malformed input: ~e" s)]))
 
 
@@ -87,7 +109,8 @@ test cases for new interp
 (define (parser [sexp : Sexp]) : ExprC
   (match sexp
     [ (? real? n) (numC n)]
-    [ (? symbol? s) (IdC s)]
+    [(? symbol? s) (IdC s)]
+    [ (list (? symbol? s) r ...) (AppC s (parser r))] ; Only handles one function call...
     [ (list '+ l r) (binopC '+ (parser l) (parser r)) ]
     [ (list '- l r) (binopC '- (parser l) (parser r)) ]
     [ (list '* l r) (binopC '* (parser l) (parser r)) ]
@@ -101,7 +124,7 @@ test cases for new interp
 
 
 
-; get func definition by name
+; Get func definition by name.
 ;input - a name for the func yooure looking for | the list of all functions available
 ; output - the functiondef of the exisiting name
 (define (get-fundef [name : Symbol] [fdlst :  (Listof FunDefC) ] ) : FunDefC
@@ -111,17 +134,29 @@ test cases for new interp
     [else (get-fundef name (rest fdlst))]))
 
 
+(define main-checker (lambda ([fun : FunDefC] [val : Symbol]) (symbol=? (FunDefC-name fun) val)))
+; This function interprets the function named main from the fundefs.
+; Input - Funtion definitions.
+; Output - Real
+(define (interp-fns [funs : (Listof FunDefC)]) : Real
+  (define main_index (index-of funs 'main main-checker))
+  (
+   if (false? main_index)
+      (error 'interp-fns "Main not found in function definitions of ~e" funs)
+      (
+       interp (list-ref funs main_index))
+      ))
 
 ; This function accepts an s-expression and calls the parser and then the interp function.
 ; Input - Sexp
 ; Output - A real number that is the interpreted result from the Arith language
-(define (top-interp [sexp : Sexp] [fds : (Listof FunDefC)]) : Real
-  (interp (parser sexp) fds))
+; (define (top-interp [sexp : Sexp]) : Real
+(: top-interp (Sexp -> Real))
+(define (top-interp fun-sexps)
+  (interp-fns (parse-prog fun-sexps)))
 
 
-;takes in single s exp and returns list of function definitions - part 5 :skull:
-;Input - Sexp
-;Output - list of parsed function def - ready to be interped
+; Takes in single s exp and returns list of function definitions - part 5 :skull:
 (define (parse-prog [s : Sexp]) : (Listof FunDefC)
   (match s
     [(list fundef ...) (map parse-fundefc fundef)]
@@ -140,10 +175,10 @@ test cases for new interp
 ; Test Cases for lookup
 
 ; Test Cases for top-interp
-(check-equal? (top-interp '{+ 1 2} '()) 3)
-(check-equal? (top-interp '{* 1 {+ 2 3}} '()) 5)
-(check-equal? (top-interp '{- 9 {+ 2 3}} '()) 4)
-(check-equal? (top-interp '{ifleq0? -1 1 0} '()) 1)
-(check-equal? (top-interp '{ifleq0? 1 1 0} '()) 0)
+; (check-equal? (top-interp '{+ 1 2}) 3)
+; (check-equal? (top-interp '{* 1 {+ 2 3}} ) 5)
+; (check-equal? (top-interp '{- 9 {+ 2 3}}) 4)
+; (check-equal? (top-interp '{ifleq0? -1 1 0}) 1)
+; (check-equal? (top-interp '{ifleq0? 1 1 0}) 0)
 ; (check-equal? (top-interp '{- 10 {^2 3}}) 1)
-(parser '{def hello {(x y) => {+ 5 5}}})
+(top-interp '{{def hello {() => {+ 5 5}}} {def main {() => {x}}}})
