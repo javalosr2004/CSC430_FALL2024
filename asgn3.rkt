@@ -87,11 +87,13 @@
     [ (list '* l r) (binopC '* (parse l) (parse r)) ]
     [ (list '/ l r) (binopC '/ (parse l) (parse r)) ]
     [ (list '/ args ...) (error 'parse "AAQZ wrong number of arguments given ~e" sexp) ] 
+
     [ (list 'ifleq0? test if_cond else_cond) (ifleq0? (parse test) (parse if_cond) (parse else_cond))]
     [ (list (? symbol? fun) args ...)
       (define cast_args (map (lambda (arg) (parse arg)) args)) ; Parsing every argument into ExprC.
       (AppC fun cast_args)]
     [_else (error 'Input "AAQZ -Malformed input, passed expression: ~e" sexp)]))
+
 
 
 
@@ -171,6 +173,7 @@
 (check-equal? (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
 (check-exn (regexp (regexp-quote "AAQZ Malformed input, passed expression:")) (lambda () (parse '{2 3})))
 (check-exn (regexp (regexp-quote "AAQZ wrong number of arguments given")) (lambda () (parse '{/ 2 3 3})))
+
 
 ; Test Cases for parse-prog
 (check-equal? (parse-prog '{{def fun-ex-1 {() => {+ 1 1}}}}) (list fun-ex-1))
