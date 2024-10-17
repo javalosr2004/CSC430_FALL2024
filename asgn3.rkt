@@ -25,7 +25,7 @@
     [_else (error 'binary-operation "AAQZ unsupported op of ~e" op)]))
 
 
-; This function interprets a given ExprC expression and returns the result. 
+; This function interprets a given ExprC expression and returns the result.
 (define (interp [ a : ExprC ] [ fds : (Listof FunDefC)]) : Real
   (match a
     [ (numC n) n ]
@@ -37,7 +37,7 @@
                                (FunDefC-args fd)
                                (FunDefC-body fd))
                         fds)]
-    [_else (error 'interp "Method not implemented yet, passed value: ~e" a)]))
+    [_else (error 'interp "AQQZ - Method not implemented yet, passed value: ~e" a)]))
 
 ; This function substitutes arguments into a function body.
 ; Input - function body - ExprC
@@ -64,32 +64,33 @@
 ; This function parses function definitions in s-expression form to FunDefC.
 ; Input - S-Expression
 ; Output - FunDefC
-(define (parse-fundefc [s : Sexp]) : FunDefC
+(define (parse-fundef [s : Sexp]) : FunDefC
   (match s
     [ (list 'def (? symbol? name) (list (list (? symbol? args) ...) '=> body))
       (define cast_args (cast args (Listof Symbol))) ; Casting to list of symbols, as specified by matching.
-      (when (not (equal? (length cast_args) (length (remove-duplicates cast_args))))  ;checking that no dup args are given - 3.2
-        (error 'parse-fundefc "AAQZ - Duplicate parameter names in function definition: ~e" s))
-      (FunDefC name cast_args (parser body))]
-    [_ (error 'parse-fundefc "Malformed input: ~e" s)]))
+      ;checking that no dup args are given - 3.2
+      (when (not (equal? (length cast_args) (length (remove-duplicates cast_args))))
+        (error 'parse-fundef "AAQZ - Duplicate parameter names in function definition: ~e" s))
+      (FunDefC name cast_args (parse body))]
+    [_ (error 'parse-fundef "AQQZ - Malformed input: ~e" s)]))
 
 
 ; This function parses a passed in S-Expression into the ExprC language.
 ; Input - S-Expression
 ; Output - ExprC
-(define (parser [sexp : Sexp]) : ExprC
+(define (parse [sexp : Sexp]) : ExprC
   (match sexp
     [ (? real? n) (numC n)]
     [(? symbol? s) (IdC s)]
-    [ (list '+ l r) (binopC '+ (parser l) (parser r)) ]
-    [ (list '- l r) (binopC '- (parser l) (parser r)) ]
-    [ (list '* l r) (binopC '* (parser l) (parser r)) ]
-    [ (list '/ l r) (binopC '/ (parser l) (parser r)) ]
-    [ (list 'ifleq0? test if_cond else_cond) (ifleq0? (parser test) (parser if_cond) (parser else_cond))]
+    [ (list '+ l r) (binopC '+ (parse l) (parse r)) ]
+    [ (list '- l r) (binopC '- (parse l) (parse r)) ]
+    [ (list '* l r) (binopC '* (parse l) (parse r)) ]
+    [ (list '/ l r) (binopC '/ (parse l) (parse r)) ]
+    [ (list 'ifleq0? test if_cond else_cond) (ifleq0? (parse test) (parse if_cond) (parse else_cond))]
     [ (list (? symbol? fun) args ...)
-      (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
+      (define cast_args (map (lambda (arg) (parse arg)) args)) ; Parsing every argument into ExprC.
       (AppC fun cast_args)]
-    [_else (error 'Input "Malformed input, passed expression: ~e" sexp)]))
+    [_else (error 'Input "AQQZ -Malformed input, passed expression: ~e" sexp)]))
 
 
 
@@ -111,10 +112,10 @@
   (define main_index (index-of funs 'main main-checker))
   (
    if (false? main_index)
-      (error 'interp-fns "Main not found in function definitions of ~e" funs)
+      (error 'interp-fns "AQQZ - Main not found in function definitions of ~e" funs)
       (interp  (FunDefC-body (list-ref funs main_index)) funs)))
 
-; This function accepts an s-expression and calls the parser and then the interp function. 
+; This function accepts an s-expression and calls the parse and then the interp function.
 ; Input - Sexp
 ; Output - A real number that is the interpreted result from the Arith language
 ; (define (top-interp [sexp : Sexp]) : Real
@@ -126,7 +127,7 @@
 ; Takes in single s exp and returns list of function definitions - part 5 :skull:
 (define (parse-prog [s : Sexp]) : (Listof FunDefC)
   (match s
-    [(list fundef ...) (map parse-fundefc fundef)]
+    [(list fundef ...) (map parse-fundef fundef)]
     [_ (error 'parse-prog "AAQZ malformed list of func ~e" s)]))
 
 
@@ -137,7 +138,7 @@
 (check-equal? (subst (list (numC 12)) '(f) (IdC 'z)) (IdC 'z))
 (check-equal? (subst (list (numC 20) (numC 10)) '(x y)
                      (binopC '* (IdC 'y) (IdC 'x)))
-              (binopC '* (numC 10) (numC 20))) 
+              (binopC '* (numC 10) (numC 20)))
 
 (check-equal? (subst (list (numC -5) (numC 1) (numC 0))
                      (list 'a 'b 'c)
@@ -145,9 +146,9 @@
               (ifleq0?  (numC -5) (numC 1) (numC 0)))
 
 ; Example definitions
-(define fun-ex-1 (parse-fundefc '{def fun-ex-1 {() => {+ 1 1}}}))
-(define fun-ex-2 (parse-fundefc '{def fun-ex-2 {(x) => {+ x {fun-ex-1}}}}))
-(define fun-ex-3 (parse-fundefc '{def fun-ex-3 {(x y) => {+ {fun-ex-2 x} {fun-ex-2 y}}}}))
+(define fun-ex-1 (parse-fundef '{def fun-ex-1 {() => {+ 1 1}}}))
+(define fun-ex-2 (parse-fundef '{def fun-ex-2 {(x) => {+ x {fun-ex-1}}}}))
+(define fun-ex-3 (parse-fundef '{def fun-ex-3 {(x y) => {+ {fun-ex-2 x} {fun-ex-2 y}}}}))
 
 ; Test Cases for interp
 (check-equal? (interp (binopC '+ (numC 3.0) (numC 4.0)) '()) 7.0)
@@ -159,15 +160,15 @@
 ; (check-equal? (interp (AppC ) )
 (check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)) '())))
 
-; Test Cases for parser
+; Test Cases for parse
 ; (check-exn (regexp (regexp-quote "ifleq0? is not implemented yet."))
-;            (lambda () (parser '{ifleq0? 10})))
-(check-equal? (parse-fundefc '{def funny {() => {+ 9 10}}}) (FunDefC 'funny '() (binopC '+ (numC 9) (numC 10))))
-(check-equal? (parser '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
-(check-equal? (parser '{- 3 3}) (binopC '- (numC 3) (numC 3)))
-(check-equal? (parser '{* 3 3}) (binopC '* (numC 3) (numC 3)))
-(check-equal? (parser '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
-(check-exn (regexp (regexp-quote "Malformed input, passed expression:")) (lambda () (parser '{2 3})))
+;            (lambda () (parse '{ifleq0? 10})))
+(check-equal? (parse-fundef '{def funny {() => {+ 9 10}}}) (FunDefC 'funny '() (binopC '+ (numC 9) (numC 10))))
+(check-equal? (parse '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
+(check-equal? (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
+(check-equal? (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
+(check-equal? (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
+(check-exn (regexp (regexp-quote "Malformed input, passed expression:")) (lambda () (parse '{2 3})))
 
 ; Test Cases for parse-prog
 (check-equal? (parse-prog '{{def fun-ex-1 {() => {+ 1 1}}}}) (list fun-ex-1))
@@ -188,7 +189,7 @@
 
 ; Test cases for parse-fundef
 (check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
-           (lambda () (parse-fundefc '{def funny {(x y x) => {+ x y}}})))
+           (lambda () (parse-fundef '{def funny {(x y x) => {+ x y}}})))
 
 ; Test Cases for top-interp
 ; (check-equal? (top-interp '{+ 1 2}) 3)
@@ -201,11 +202,10 @@
 (check-equal? (top-interp '{{def fun {(x y z) => {+ {+ x y} z}}} {def main {() => {+ {fun 3 3 3} {fun 3 4 5}}}}}) 21)
 
 ; Test Cases for get-fundefc
-(check-exn (regexp (regexp-quote "AAQZ reference to func not supported")) (lambda () (get-fundef 'funny (list fun-ex-1))))
-(check-exn(regexp (regexp-quote "Malformed input")) (lambda () (parse-fundefc '(def funny (x x => (+ x x))))))
-
-
-
+(check-exn (regexp (regexp-quote "AAQZ reference to func not supported"))
+           (lambda () (get-fundef 'funny (list fun-ex-1))))
+(check-exn(regexp (regexp-quote "Malformed input"))
+          (lambda () (parse-fundef '(def funny (x x => (+ x x))))))
 
 
 ; Test Cases for top-interp
