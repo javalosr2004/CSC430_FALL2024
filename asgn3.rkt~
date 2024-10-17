@@ -9,8 +9,8 @@
 (struct binopC ([ op : Symbol] [ l : ExprC] [r : ExprC] )#:transparent)
 (struct numC ([n : Real])#:transparent)
 (struct ifleq0? ([ test : ExprC ] [ if_cond : ExprC ] [ else_cond : ExprC])#:transparent)
-(struct FunDefC ([name : Symbol] [args : (Listof Symbol)] [body : ExprC])#:transparent)
-(struct AppC ([fun : Symbol] [args : (Listof ExprC)])#:transparent)
+(struct FunDefC ([name : Symbol] [args : (Listof Symbol)] [body : ExprC]))
+(struct AppC ([fun : Symbol] [args : (Listof ExprC)]))
 (struct IdC ([id : Symbol]) #:transparent)
 
 ; This function finds the corresponding binary operation based on symbol passed.
@@ -86,9 +86,30 @@
     [ (list '* l r) (binopC '* (parser l) (parser r)) ]
     [ (list '/ l r) (binopC '/ (parser l) (parser r)) ]
     [ (list 'ifleq0? test if_cond else_cond) (ifleq0? (parser test) (parser if_cond) (parser else_cond))]
-    [ (list (? symbol? fun) args ...)
+    [ (list 'def _r ...) (parse-fundefc sexp)] ; Duplicate matching???? r is used to symbolize that there are properties left.
+    ; [ (list (list (? symbol? fun) args ...) r ...)
+    ;   (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
+    ;   (printf "Found appC ~e ~e" fun args)
+    ;   ;   (cons (AppC fun cast_args) (parser r))]
+    ;   (AppC fun cast_args)]
+    [ (list (list (? symbol? fun) args ...))
       (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
-      (AppC fun cast_args)]
+      (match sexp
+        [ (list (list '+ l r)) (binopC '+ (parser l) (parser r)) ]
+        [ (list (list '- l r)) (binopC '- (parser l) (parser r)) ]
+        [ (list (list '* l r)) (binopC '* (parser l) (parser r)) ]
+        [ (list (list '/ l r))  (binopC '/ (parser l) (parser r))]
+        [ (list (list 'ifleq0? test if_cond else_cond)) (ifleq0? (parser test) (parser if_cond) (parser else_cond))]
+        [_else (AppC fun cast_args)])]
+    [  (list (? symbol? fun) args ...)
+       (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
+       (match sexp
+         [ (list (list '+ l r)) (binopC '+ (parser l) (parser r)) ]
+         [ (list (list '- l r)) (binopC '- (parser l) (parser r)) ]
+         [ (list (list '* l r)) (binopC '* (parser l) (parser r)) ]
+         [ (list (list '/ l r))  (binopC '/ (parser l) (parser r))]
+         [ (list (list 'ifleq0? test if_cond else_cond)) (ifleq0? (parser test) (parser if_cond) (parser else_cond))]
+         [_else (AppC fun cast_args)])]
     [_else (error 'Input "Malformed input, passed expression: ~e" sexp)]))
 
 
@@ -130,47 +151,27 @@
     [_ (error 'parse-prog "AAQZ malformed list of func ~e" s)]))
 
 
-; Example definitions
-(define fun-ex-1 (parse-fundefc '{def fun-ex-1 {() => {+ 1 1}}}))
-(define fun-ex-2 (parse-fundefc '{def fun-ex-2 {(x) => {+ x {fun-ex-1}}}}))
-(define fun-ex-3 (parse-fundefc '{def fun-ex-3 {(x y) => {+ {fun-ex-2 x} {fun-ex-2 y}}}}))
-
 ; Test Cases for interp
-(check-equal? (interp (binopC '+ (numC 3.0) (numC 4.0)) '()) 7.0)
-(check-equal? (interp (binopC '- (numC 4.0) (numC 3.0)) '()) 1.0)
-(check-equal? (interp (binopC '/ (numC 4.0) (numC 2.0)) '()) 2.0)
-(check-equal? (interp (binopC '* (numC 3.0) (numC 4.0)) '()) 12.0)
-(check-equal? (interp (AppC 'fun-ex-3 (list (numC 2) (numC 3))) (list fun-ex-3 fun-ex-2 fun-ex-1)) 9)
-(check-exn (regexp (regexp-quote "Method not implemented yet, passed value:")) (lambda () (interp fun-ex-1 '())))
-; (check-equal? (interp (AppC ) )
-(check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)) '())))
+(check-equal? (interp (binopC '+ (numC 3.0) (numC 4.0))) 7.0)
+(check-equal? (interp (binopC '- (numC 4.0) (numC 3.0))) 1.0)
+(check-equal? (interp (binopC '/ (numC 4.0) (numC 2.0))) 2.0)
+(check-equal? (interp (binopC '* (numC 3.0) (numC 4.0))) 12.0)
+
+(check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)))))
+(check-exn (regexp (regexp-quote "AAQZ ifleq0? is not implemented yet.")) (lambda () (interp (ifleq0? (numC 3.0)))))
 
 ; Test Cases for parser
 ; (check-exn (regexp (regexp-quote "ifleq0? is not implemented yet."))
 ;            (lambda () (parser '{ifleq0? 10})))
-(check-equal? (parse-fundefc '{def funny {() => {+ 9 10}}}) (FunDefC 'funny '() (binopC '+ (numC 9) (numC 10))))
-(check-equal? (parser '{+ 3 3}) (binopC '+ (numC 3) (numC 3)))
-(check-equal? (parser '{- 3 3}) (binopC '- (numC 3) (numC 3)))
-(check-equal? (parser '{* 3 3}) (binopC '* (numC 3) (numC 3)))
-(check-equal? (parser '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
-(check-exn (regexp (regexp-quote "Malformed input, passed expression:")) (lambda () (parser '{2 3})))
 
-; Test Cases for parse-prog
-(check-equal? (parse-prog '{{def fun-ex-1 {() => {+ 1 1}}}}) (list fun-ex-1))
-(check-exn (regexp (regexp-quote "AAQZ malformed list of func")) (lambda () (parse-prog '4)))
-
-; Test Cases for interp-fns
-(check-exn (regexp (regexp-quote "Main not found in function definitions of")) (lambda () (interp-fns (list fun-ex-1))))
-
-; Test Cases for get-fundefc
-(check-exn (regexp (regexp-quote "AAQZ reference to func not supported")) (lambda () (get-fundef 'funny (list fun-ex-1))))
+; Test Cases for lookup
 
 ; Test Cases for top-interp
-(check-equal? (top-interp '{{def main {() => {+ 1 2}}}}) 3)
-(check-equal? (top-interp '{{def main {() => {* 1 {+ 2 3}}}}}) 5)
-(check-equal? (top-interp '{{def main {() => {- 9 {+ 2 3}}}}}) 4)
-(check-equal? (top-interp '{{def main {() => {ifleq0? -1 1 0}}}}) 1)
-(check-equal? (top-interp '{{def main {() => {ifleq0? 1 1 0}}}}) 0)
-(check-equal? (top-interp '{{def fun {() => {+ 5 5}}} {def main {() => {fun}}}}) 10)
+; (check-equal? (top-interp '{+ 1 2}) 3)
+; (check-equal? (top-interp '{* 1 {+ 2 3}} ) 5)
+; (check-equal? (top-interp '{- 9 {+ 2 3}}) 4)
+; (check-equal? (top-interp '{ifleq0? -1 1 0}) 1)
+; (check-equal? (top-interp '{ifleq0? 1 1 0}) 0)
+; (check-equal? (top-interp '{- 10 {^2 3}}) 1)
+; (top-interp '{{def fun {() => {+ 5 5}}} {def main {() => {{ifleq0? -1 {+ 4 4} {+ 1 2}}}}}})
 (check-equal? (top-interp '{{def fun {(x y z) => {+ {+ x y} z}}} {def main {() => {+ {fun 3 3 3} {fun 3 4 5}}}}}) 21)
-(check-equal? (top-interp '{{def main {() => {+ 9 {+ 2 {+ 3 2}}}}}}) 16)
