@@ -141,9 +141,9 @@ test cases for new interp
 
 (define (interp-fns [funs : (Listof  FunDefC)]) : Real
   (define main-fns (get-fundef 'main funs))
-  (when ( not (empty? (FunDefC-args main-fns)))
-      (error 'interp-fns "AAQZ main function needs zero arguments"))
-      (interp (AppC 'main empty) funs))
+  (if ( not (empty? (FunDefC-args main-fns)))
+      (error 'interp-fns "AAQZ main function needs zero arguments")
+      (interp (AppC 'main empty) funs)))
 
 
 
