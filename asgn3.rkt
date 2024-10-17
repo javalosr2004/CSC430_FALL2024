@@ -81,7 +81,10 @@
 (define (parse [sexp : Sexp]) : ExprC
   (match sexp
     [ (? real? n) (numC n)]
-    [(? symbol? s) (IdC s)]
+    [(? symbol? s)
+     ( if (member s '(+ - / * ifleq0?))
+          (error 'parse "AAQZ wrong identitfeir ~e" s)
+                 (IdC s))]
     [ (list '+ l r) (binopC '+ (parse l) (parse r)) ]
     [ (list '- l r) (binopC '- (parse l) (parse r)) ]
     [ (list '* l r) (binopC '* (parse l) (parse r)) ]
@@ -171,7 +174,7 @@
 (check-equal? (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
 (check-exn (regexp (regexp-quote "AAQZ Malformed input, passed expression:")) (lambda () (parse '{2 3})))
 (check-exn (regexp (regexp-quote "AAQZ wrong number of arguments given")) (lambda () (parse '{/ 2 3 3})))
-
+(check-exn (regexp (regexp-quote "AAQZ wrong identitfeir")) (lambda () (parse '{/ + 3})))
 ; Test Cases for parse-prog
 (check-equal? (parse-prog '{{def fun-ex-1 {() => {+ 1 1}}}}) (list fun-ex-1))
 (check-exn (regexp (regexp-quote "AAQZ malformed list of func")) (lambda () (parse-prog '4)))
