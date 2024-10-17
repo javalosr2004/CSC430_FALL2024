@@ -1,0 +1,12 @@
+;; Interp
+
+;[ (list (list '+ l r)) (binopC '+ (parser l) (parser r)) ]
+;[ (list (list '- l r)) (binopC '- (parser l) (parser r)) ]
+;[ (list (list '* l r)) (binopC '* (parser l) (parser r)) ]
+;[ (list (list '/ l r))  (binopC '/ (parser l) (parser r))]
+;[ (list (list 'ifleq0? test if_cond else_cond)) (ifleq0? (parser test) (parser if_cond) (parser else_cond))]
+    
+;[ (list 'def _r ...) (parse-fundefc sexp)] ; Duplicate matching???? r is used to symbolize that there are properties left.
+;[ (list (list (? symbol? fun) args ...))
+;  (define cast_args (map (lambda (arg) (parser arg)) args)) ; Parsing every argument into ExprC.
+;  (AppC fun cast_args)]
