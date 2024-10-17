@@ -202,6 +202,11 @@
 
 ; Test Cases for get-fundefc
 (check-exn (regexp (regexp-quote "AAQZ reference to func not supported")) (lambda () (get-fundef 'funny (list fun-ex-1))))
+(check-exn(regexp (regexp-quote "Malformed input")) (lambda () (parse-fundefc '(def funny (x x => (+ x x))))))
+
+
+
+
 
 ; Test Cases for top-interp
 (check-equal? (top-interp '{{def main {() => {+ 1 2}}}}) 3)
