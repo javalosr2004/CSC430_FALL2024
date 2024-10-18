@@ -13,6 +13,8 @@
 (struct AppC ([fun : Symbol] [args : (Listof ExprC)])#:transparent)
 (struct IdC ([id : Symbol]) #:transparent)
 
+(define binop-symbols '(+ - / *))
+
 ; This function finds the corresponding binary operation based on symbol passed.
 ; Input - Symbol
 ; Output - Function
@@ -67,6 +69,7 @@
 (define (parse-fundef [s : Sexp]) : FunDefC
   (match s
     [ (list 'def (? symbol? name) (list (list (? symbol? args) ...) '=> body))
+      #:when (not (member name binop-symbols))
       (define cast_args (cast args (Listof Symbol))) ; Casting to list of symbols, as specified by matching.
       ;checking that no dup args are given - 3.2
       (when (not (equal? (length cast_args) (length (remove-duplicates cast_args))))
@@ -74,27 +77,48 @@
       (FunDefC name cast_args (parse body))]
     [_ (error 'parse-fundef "AAQZ - Malformed input: ~e" s)]))
 
+; This function parses the left and right argument from the passed binary operation.
+(define (parse-binop [op : Symbol] [sexp : Sexp] ) : ExprC
+  (match sexp
+    [(list l r) (binopC op (parse l) (parse r))]
+    [_else (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]))
 
 ; This function parses a passed in S-Expression into the ExprC language.
 ; Input - S-Expression
 ; Output - ExprC
 (define (parse [sexp : Sexp]) : ExprC
   (match sexp
-    [ (? real? n) (numC n)]
     [(? symbol? s)
-     ( if (member s '(+ - / * ifleq0?))
-          (error 'parse "AAQZ wrong identitfeir ~e" s)
-                 (IdC s))]
-    [ (list '+ l r) (binopC '+ (parse l) (parse r)) ]
-    [ (list '- l r) (binopC '- (parse l) (parse r)) ]
-    [ (list '* l r) (binopC '* (parse l) (parse r)) ]
-    [ (list '/ l r) (binopC '/ (parse l) (parse r)) ]
-    [ (list '/ args ...) (error 'parse "AAQZ wrong number of arguments given ~e" sexp) ] 
+     (cond
+       [(member s binop-symbols)
+       (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
+       [(symbol=? s 'ifleq0?)
+        (error 'parse "AAQZ cant use ifleq0 as id ~e" sexp)]
+       [else (IdC s)])]
+        
+    [(list op _l)
+     #:when (member op binop-symbols)
+     (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
+    [(list (or '+ '- '* '/) args ...) (parse-binop (first sexp) args)]
+    [ (? real? n) (numC n)]
+    ;[(? symbol? s) (IdC s)]
+    ; [ (list '+ args ...) (parse-binop '+ args) ]
+    ; [ (list '- args ...) (parse-binop '- args) ]
+    ; [ (list '* args ...) (parse-binop '* args) ]
+    ; [ (list '/ args ...) (parse-binop '/ args) ]
+
     [ (list 'ifleq0? test if_cond else_cond) (ifleq0? (parse test) (parse if_cond) (parse else_cond))]
+    
     [ (list (? symbol? fun) args ...)
-      (define cast_args (map (lambda (arg) (parse arg)) args)) ; Parsing every argument into ExprC.
-      (AppC fun cast_args)]
-    [_else (error 'Input "AAQZ -Malformed input, passed expression: ~e" sexp)]))
+      (cond
+       [(symbol=? fun 'ifleq0?)
+        (error 'parse "AAQZ cant use ifleq0 as id ~e" sexp)]
+       [else
+        (define cast_args (map parse args))
+        (AppC fun cast_args)])]
+    
+    [_else (error 'Input "AAQZ - Malformed input, passed expression: ~e" sexp)]))
+
 
 
 
@@ -116,7 +140,7 @@
   (define main_index (index-of funs 'main main-checker))
   (
    if (false? main_index)
-      (error 'interp-fns "AQQZ - Main not found in function definitions of ~e" funs)
+      (error 'interp-fns "AAQZ - Main not found in function definitions of ~e" funs)
       (interp  (FunDefC-body (list-ref funs main_index)) funs)))
 
 ; This function accepts an s-expression and calls the parse and then the interp function.
@@ -164,6 +188,8 @@
 ; (check-equal? (interp (AppC ) )
 (check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)) '())))
 
+
+
 ; Test Cases for parse
 ; (check-exn (regexp (regexp-quote "ifleq0? is not implemented yet."))
 ;            (lambda () (parse '{ifleq0? 10})))
@@ -172,15 +198,22 @@
 (check-equal? (parse '{- 3 3}) (binopC '- (numC 3) (numC 3)))
 (check-equal? (parse '{* 3 3}) (binopC '* (numC 3) (numC 3)))
 (check-equal? (parse '{/ 3 3}) (binopC '/ (numC 3) (numC 3)))
-(check-exn (regexp (regexp-quote "AAQZ Malformed input, passed expression:")) (lambda () (parse '{2 3})))
+(check-exn (regexp (regexp-quote "AAQZ - Malformed input, passed expression:")) (lambda () (parse '{2 3})))
 (check-exn (regexp (regexp-quote "AAQZ wrong number of arguments given")) (lambda () (parse '{/ 2 3 3})))
-(check-exn (regexp (regexp-quote "AAQZ wrong identitfeir")) (lambda () (parse '{/ + 3} )))
+
+
+(check-exn (regexp (regexp-quote "AAQZ wrong number of arguments given")) (lambda () (parse '{+ 1})))
+(check-exn (regexp (regexp-quote "AAQZ wrong number of arguments given")) (lambda () (parse '+ )))
+(check-exn (regexp (regexp-quote "AAQZ cant use ifleq0 as id ")) (lambda () (parse 'ifleq0? )))
+(check-exn (regexp (regexp-quote "AAQZ cant use ifleq0 as id "))
+           (lambda () (parse '( ifleq0? (x 4) then 3 else (+ 2 9) 3 ))))
+
 ; Test Cases for parse-prog
 (check-equal? (parse-prog '{{def fun-ex-1 {() => {+ 1 1}}}}) (list fun-ex-1))
 (check-exn (regexp (regexp-quote "AAQZ malformed list of func")) (lambda () (parse-prog '4)))
 
 ; Test Cases for interp-fns
-(check-exn (regexp(regexp-quote "AAQZ Main not found in function definitions of"))
+(check-exn (regexp(regexp-quote "AAQZ - Main not found in function definitions of"))
            (lambda () (interp-fns (list fun-ex-1))))
 
 ; Test Cases for lookup
@@ -197,6 +230,8 @@
 (check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
            (lambda () (parse-fundef '{def funny {(x y x) => {+ x y}}})))
 
+;(parse-fundef '{def + {{} => 13}})
+
 ; Test Cases for top-interp
 ; (check-equal? (top-interp '{+ 1 2}) 3)
 ; (check-equal? (top-interp '{* 1 {+ 2 3}} ) 5)
@@ -210,7 +245,7 @@
 ; Test Cases for get-fundefc
 (check-exn (regexp (regexp-quote "AAQZ reference to func not supported"))
            (lambda () (get-fundef 'funny (list fun-ex-1))))
-(check-exn(regexp (regexp-quote "AAQZ Malformed input"))
+(check-exn(regexp (regexp-quote "AAQZ - Malformed input"))
           (lambda () (parse-fundef '(def funny (x x => (+ x x))))))
 
 
