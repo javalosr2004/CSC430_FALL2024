@@ -95,7 +95,6 @@
        [(symbol=? s 'ifleq0?)
         (error 'parse "AAQZ cant use ifleq0 as id ~e" sexp)]
        [else (IdC s)])]
-        
     [(list op _l)
      #:when (member op binop-symbols)
      (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
@@ -116,7 +115,9 @@
        [else
         (define cast_args (map parse args))
         (AppC fun cast_args)])]
-    
+      ;(define cast_args (map (lambda (arg) (parse arg)) args)) ; Parsing every argument into ExprC.
+      ;(AppC fun cast_args)]
+
     [_else (error 'Input "AAQZ - Malformed input, passed expression: ~e" sexp)]))
 
 
@@ -229,8 +230,6 @@
 ; Test cases for parse-fundef
 (check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
            (lambda () (parse-fundef '{def funny {(x y x) => {+ x y}}})))
-
-;(parse-fundef '{def + {{} => 13}})
 
 ; Test Cases for top-interp
 ; (check-equal? (top-interp '{+ 1 2}) 3)
