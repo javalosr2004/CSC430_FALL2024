@@ -89,23 +89,35 @@
 (define (parse [sexp : Sexp]) : ExprC
   (match sexp
     [(? symbol? s)
-     #:when (member s binop-symbols)
-     (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
+     (cond
+       [(member s binop-symbols)
+       (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
+       [(symbol=? s 'ifleq0?)
+        (error 'parse "AAQZ cant use ifleq0 as id ~e" sexp)]
+       [else (IdC s)])]
     [(list op _l)
      #:when (member op binop-symbols)
      (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
     [(list (or '+ '- '* '/) args ...) (parse-binop (first sexp) args)]
     [ (? real? n) (numC n)]
-    [(? symbol? s) (IdC s)]
+    ;[(? symbol? s) (IdC s)]
     ; [ (list '+ args ...) (parse-binop '+ args) ]
     ; [ (list '- args ...) (parse-binop '- args) ]
     ; [ (list '* args ...) (parse-binop '* args) ]
     ; [ (list '/ args ...) (parse-binop '/ args) ]
 
     [ (list 'ifleq0? test if_cond else_cond) (ifleq0? (parse test) (parse if_cond) (parse else_cond))]
+    
     [ (list (? symbol? fun) args ...)
-      (define cast_args (map (lambda (arg) (parse arg)) args)) ; Parsing every argument into ExprC.
-      (AppC fun cast_args)]
+      (cond
+       [(symbol=? fun 'ifleq0?)
+        (error 'parse "AAQZ cant use ifleq0 as id ~e" sexp)]
+       [else
+        (define cast_args (map parse args))
+        (AppC fun cast_args)])]
+      ;(define cast_args (map (lambda (arg) (parse arg)) args)) ; Parsing every argument into ExprC.
+      ;(AppC fun cast_args)]
+
     [_else (error 'Input "AAQZ - Malformed input, passed expression: ~e" sexp)]))
 
 
@@ -177,6 +189,8 @@
 ; (check-equal? (interp (AppC ) )
 (check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)) '())))
 
+
+
 ; Test Cases for parse
 ; (check-exn (regexp (regexp-quote "ifleq0? is not implemented yet."))
 ;            (lambda () (parse '{ifleq0? 10})))
@@ -188,6 +202,12 @@
 (check-exn (regexp (regexp-quote "AAQZ - Malformed input, passed expression:")) (lambda () (parse '{2 3})))
 (check-exn (regexp (regexp-quote "AAQZ wrong number of arguments given")) (lambda () (parse '{/ 2 3 3})))
 
+
+(check-exn (regexp (regexp-quote "AAQZ wrong number of arguments given")) (lambda () (parse '{+ 1})))
+(check-exn (regexp (regexp-quote "AAQZ wrong number of arguments given")) (lambda () (parse '+ )))
+(check-exn (regexp (regexp-quote "AAQZ cant use ifleq0 as id ")) (lambda () (parse 'ifleq0? )))
+(check-exn (regexp (regexp-quote "AAQZ cant use ifleq0 as id "))
+           (lambda () (parse '( ifleq0? (x 4) then 3 else (+ 2 9) 3 ))))
 
 ; Test Cases for parse-prog
 (check-equal? (parse-prog '{{def fun-ex-1 {() => {+ 1 1}}}}) (list fun-ex-1))
@@ -210,8 +230,6 @@
 ; Test cases for parse-fundef
 (check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
            (lambda () (parse-fundef '{def funny {(x y x) => {+ x y}}})))
-
-(parse-fundef '{def + {{} => 13}})
 
 ; Test Cases for top-interp
 ; (check-equal? (top-interp '{+ 1 2}) 3)
