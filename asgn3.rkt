@@ -31,8 +31,14 @@
 (define (interp [ a : ExprC ] [ fds : (Listof FunDefC)]) : Real
   (match a
     [ (numC n) n ]
-    [ (binopC op l r) ( (lookup op) (interp l fds) (interp r fds)  )]
-    [ (ifleq0? test if_cond else_cond) (if (<= (interp test fds) 0) (interp if_cond fds) (interp else_cond fds))]
+    [ (binopC op l r)
+      (define lval (interp l fds))
+      (define rval (interp r fds))
+      (if (and (equal? '/ op) (zero? rval))
+          (error 'interp "AAQZ divide by zero error ~e" a)
+          ((lookup op)  lval rval ))]
+    
+    [(ifleq0? test if_cond else_cond) (if (<= (interp test fds) 0) (interp if_cond fds) (interp else_cond fds))]
     ; Taken from seciton 5.4
     [(AppC f a) (define fd (get-fundef f fds))
                 (interp (subst a
@@ -95,6 +101,7 @@
        [(symbol=? s 'ifleq0?)
         (error 'parse "AAQZ cant use ifleq0 as id ~e" sexp)]
        [else (IdC s)])]
+        
     [(list op _l)
      #:when (member op binop-symbols)
      (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
@@ -115,9 +122,7 @@
        [else
         (define cast_args (map parse args))
         (AppC fun cast_args)])]
-      ;(define cast_args (map (lambda (arg) (parse arg)) args)) ; Parsing every argument into ExprC.
-      ;(AppC fun cast_args)]
-
+    
     [_else (error 'Input "AAQZ - Malformed input, passed expression: ~e" sexp)]))
 
 
@@ -189,6 +194,8 @@
 ; (check-equal? (interp (AppC ) )
 (check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)) '())))
 
+(check-exn (regexp (regexp-quote "AAQZ divide by zero error"))
+           (λ () (interp (binopC '/ (numC 4) (numC 0) ) '() )))
 
 
 ; Test Cases for parse
@@ -230,6 +237,8 @@
 ; Test cases for parse-fundef
 (check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
            (lambda () (parse-fundef '{def funny {(x y x) => {+ x y}}})))
+
+;(parse-fundef '{def + {{} => 13}})
 
 ; Test Cases for top-interp
 ; (check-equal? (top-interp '{+ 1 2}) 3)
