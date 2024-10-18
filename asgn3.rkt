@@ -34,9 +34,11 @@
     [ (binopC op l r)
       (define lval (interp l fds))
       (define rval (interp r fds))
-      (if (and (equal? '/ op) (zero? rval))
-          (error 'interp "AAQZ divide by zero error ~e" a)
-          ((lookup op)  lval rval ))]
+      ;(printf "~e ~e ~e ~e \n" op rval(equal? '/ op)(zero? rval))
+      
+      (cond
+       [(and (equal? '/ op) (zero? rval) ) (error 'binary-operation "AAQZ divide by zero error ~e" op)]
+       [else  ((lookup op)  lval rval )])]
     
     [(ifleq0? test if_cond else_cond) (if (<= (interp test fds) 0) (interp if_cond fds) (interp else_cond fds))]
     ; Taken from seciton 5.4
@@ -195,7 +197,8 @@
 (check-exn (regexp (regexp-quote "AAQZ unsupported op")) (lambda () (interp (binopC '_ (numC 3.0) (numC 4.0)) '())))
 
 (check-exn (regexp (regexp-quote "AAQZ divide by zero error"))
-           (λ () (interp (binopC '/ (numC 4) (numC 0) ) '() )))
+           (λ () (interp (binopC '/ (numC 4) ( binopC  '+ (numC 0) (numC 0) ) ) '() )))
+
 
 
 ; Test Cases for parse
@@ -238,6 +241,7 @@
 (check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
            (lambda () (parse-fundef '{def funny {(x y x) => {+ x y}}})))
 
+(top-interp '((def ignoreit ((x) => (+ 3 4))) (def main (() => (ignoreit (/ 1 (+ 0 0)))))))
 ;(parse-fundef '{def + {{} => 13}})
 
 ; Test Cases for top-interp
