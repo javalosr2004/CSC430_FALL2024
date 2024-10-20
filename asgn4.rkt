@@ -82,3 +82,11 @@
        [else (lookup for r)])]))
 
 
+
+(check-equal? (interp (NumC 3) mt-env '()) (NumV 3))
+(check-equal? (interp (BoolC #f) mt-env '()) (BoolV #f))
+(check-equal? (interp (StringC "consort") mt-env '()) (StringV "consort"))
+
+(define fake-env (extend-env (Binding 'index (NumV 12)) mt-env))
+
+(check-equal? (interp (IdC 'index ) fake-env '()) (NumV 12))
