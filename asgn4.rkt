@@ -51,6 +51,21 @@
 
 
 
+
+(define (+num [ l : Value] [ r : Value]) : Value
+  (cond
+    [(and (NumV? l) (NumV? r)) (NumV (+ (NumV-n l ) (NumV-n r)))] 
+    [else error '+num "AAQZ : both must be numbers : L: ~e R: ~e" l r]))
+    
+     
+
+(define (*num [ l : Value] [ r : Value]) : Value
+  (cond
+    [(and (NumV? l) (NumV? r)) (NumV (* (NumV-n l ) (NumV-n r)))] 
+    [else error '*num "AAQZ : both must be numbers : L: ~e R: ~e" l r]))
+
+
+
 ;;evals an expression in a given env and list of funct definitions
 ;;inputs: The expression to evaluate - Exprc
 ;;current env mapping ids to their vals - Env
