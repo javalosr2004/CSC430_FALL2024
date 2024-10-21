@@ -14,6 +14,7 @@
 (struct IdC ([id : Symbol]) #:transparent)
 
 (define binop-symbols '(+ - / *))
+(define special-symbols '(def => ifleq0?))
 
 ; This function finds the corresponding binary operation based on symbol passed.
 ; Input - Symbol
@@ -35,15 +36,14 @@
       (define lval (interp l fds))
       (define rval (interp r fds))
       ;(printf "~e ~e ~e ~e \n" op rval(equal? '/ op)(zero? rval))
-      
       (cond
-       [(and (equal? '/ op) (zero? rval) ) (error 'binary-operation "AAQZ divide by zero error ~e" op)]
-       [else  ((lookup op)  lval rval )])]
-    
+        [(and (equal? '/ op) (zero? rval) ) (error 'binary-operation "AAQZ divide by zero error ~e" a)]
+        [else  ((lookup op)  lval rval )])]
+
     [(ifleq0? test if_cond else_cond) (if (<= (interp test fds) 0) (interp if_cond fds) (interp else_cond fds))]
     ; Taken from seciton 5.4
     [(AppC f a) (define fd (get-fundef f fds))
-                (interp (subst a
+                (interp (subst (map (lambda (exp) (numC (interp (cast exp ExprC) fds))) a)
                                (FunDefC-args fd)
                                (FunDefC-body fd))
                         fds)]
@@ -54,21 +54,22 @@
 ; Input - arguments to pass into - (Listof ExprC)
 ; Output - ExprC
 (define (subst [what : (Listof ExprC)] [for : (Listof Symbol)] [in : ExprC]) : ExprC
-  (match in
-    [(numC _n) in]
-    [(IdC s)
-     ;  (printf "Value of what: ~e. Value for: ~e. Value for in: ~e\n" what for in )
-     (define var_idx (index-of for s))
-     (cond
-       [(false? var_idx) in]
-       [else (list-ref what var_idx)])]
-    [(AppC f a) (AppC f (map (lambda (x) (subst what for (cast x ExprC))) a))] ; Could be making unneccesary calls.
-    [(binopC s l r) (binopC s (subst what for l)
-                            (subst what for r))]
-    [(ifleq0? test if_cond else_cond) (ifleq0? (subst what for test)
-                                               (subst what for if_cond)
-                                               (subst what for else_cond))]
-    ))
+  (if (not (eq? (length what) (length for)))
+      (error 'subst "AAQZ - too many arguments passed: ~e\n" what)
+      (match in
+        [(numC _n) in]
+        [(IdC s)
+         ;  (printf "Value of what: ~e. Value for: ~e. Value for in: ~e\n" what for in )
+         (define var_idx (index-of for s))
+         (cond
+           [(false? var_idx) in]
+           [else (list-ref what var_idx)])]
+        [(AppC f a) (AppC f (map (lambda (x) (subst what for (cast x ExprC))) a))] ; Could be making unneccesary calls.
+        [(binopC s l r) (binopC s (subst what for l)
+                                (subst what for r))]
+        [(ifleq0? test if_cond else_cond) (ifleq0? (subst what for test)
+                                                   (subst what for if_cond)
+                                                   (subst what for else_cond))])))
 
 
 ; This function parses function definitions in s-expression form to FunDefC.
@@ -99,11 +100,13 @@
     [(? symbol? s)
      (cond
        [(member s binop-symbols)
-       (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
+        (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
        [(symbol=? s 'ifleq0?)
         (error 'parse "AAQZ cant use ifleq0 as id ~e" sexp)]
+       [(member s special-symbols)
+        (error 'parse "AAQZ - Reserved keyword used in application ~e" sexp)]
        [else (IdC s)])]
-        
+
     [(list op _l)
      #:when (member op binop-symbols)
      (error 'parse "AAQZ wrong number of arguments given ~e" sexp)]
@@ -116,15 +119,15 @@
     ; [ (list '/ args ...) (parse-binop '/ args) ]
 
     [ (list 'ifleq0? test if_cond else_cond) (ifleq0? (parse test) (parse if_cond) (parse else_cond))]
-    
+
     [ (list (? symbol? fun) args ...)
       (cond
-       [(symbol=? fun 'ifleq0?)
-        (error 'parse "AAQZ cant use ifleq0 as id ~e" sexp)]
-       [else
-        (define cast_args (map parse args))
-        (AppC fun cast_args)])]
-    
+        [(symbol=? fun 'ifleq0?)
+         (error 'parse "AAQZ cant use ifleq0 as id ~e" sexp)]
+        [else
+         (define cast_args (map parse args))
+         (AppC fun cast_args)])]
+
     [_else (error 'Input "AAQZ - Malformed input, passed expression: ~e" sexp)]))
 
 
@@ -241,7 +244,6 @@
 (check-exn (regexp (regexp-quote "AAQZ - Duplicate parameter names in function definition:"))
            (lambda () (parse-fundef '{def funny {(x y x) => {+ x y}}})))
 
-(top-interp '((def ignoreit ((x) => (+ 3 4))) (def main (() => (ignoreit (/ 1 (+ 0 0)))))))
 ;(parse-fundef '{def + {{} => 13}})
 
 ; Test Cases for top-interp
@@ -259,6 +261,10 @@
            (lambda () (get-fundef 'funny (list fun-ex-1))))
 (check-exn(regexp (regexp-quote "AAQZ - Malformed input"))
           (lambda () (parse-fundef '(def funny (x x => (+ x x))))))
+(check-exn(regexp (regexp-quote "AAQZ - too many arguments"))
+          (lambda () (top-interp '{{def fun {() => {+ 5 5}}} {def main {() => {fun 2}}}})))
+(check-exn(regexp (regexp-quote "AAQZ - Reserved keyword"))
+          (lambda () (top-interp '{{def fun {() => {+ 5 5}}} {def main {() => {+ def 2}}}})))
 
 
 ; Test Cases for top-interp
