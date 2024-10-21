@@ -90,3 +90,29 @@
 (define fake-env (extend-env (Binding 'index (NumV 12)) mt-env))
 
 (check-equal? (interp (IdC 'index ) fake-env '()) (NumV 12))
+
+
+
+;take in a value and return it as a String represenation of that value
+;Input - Val
+;Output String
+(define (serialize [v : Value]) : String
+  (cond
+    [(NumV? v) (number->string (NumV-n v))]
+    [(BoolV? v) (cond
+                  [(BoolV-b v) "true"]
+                  [else "false"])]
+    [(StringV? v) (string-append "\"" (StringV-s v) "\"")]
+    [(ClosureV? v) "#<procedure>"]
+    [(PrimOpV? v) "#<primop>"]))
+    ;[else (error 'serialize " AAQZ: Unsupported val")]))
+
+
+    (check-equal? (serialize (NumV 12)) "12")
+    (check-equal? (serialize (BoolV #t)) "true")
+    (check-equal? (serialize (BoolV #f)) "false")
+    (check-equal? (serialize (StringV "12")) "\"12\"")
+    (check-equal? (serialize (ClosureV '() (NumC 12) mt-env)) "#<procedure>")
+    (check-equal? (serialize (PrimOpV '+ )) "#<primop>")
+    
+
