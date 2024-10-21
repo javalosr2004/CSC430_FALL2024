@@ -74,30 +74,31 @@
 
 (define (+num [ l : Value] [ r : Value]) : Value
   (cond
-    [(and (NumV? l) (NumV? r)) (NumV (+ (NumV-n l ) (NumV-n r)))] 
+    [(and (NumV? l) (NumV? r)) (NumV (+ (NumV-n l ) (NumV-n r)))]
     [else error '+num "AAQZ : both must be numbers : L: ~e R: ~e" l r]))
-    
-     
+
+
 
 (define (*num [ l : Value] [ r : Value]) : Value
   (cond
-    [(and (NumV? l) (NumV? r)) (NumV (* (NumV-n l ) (NumV-n r)))] 
+    [(and (NumV? l) (NumV? r)) (NumV (* (NumV-n l ) (NumV-n r)))]
     [else error '*num "AAQZ : both must be numbers : L: ~e R: ~e" l r]))
 
 
 
 ; This function evaluates an expression given an environment and function definitions
 ; to output a resultant value (Value).
- (define (interp [expr : ExprC] [env : Env] [fds : (Listof FunDefC)]) : Value
-    (match expr
-      [(NumC n) (NumV n)]
-      [(BoolC b) (BoolV b)]
-      [(StringC s) (StringV s)]
-      [(IdC s) (lookup s env)]
-      [(LambdaC par b) (ClosureV par b env)]
+(define (interp [expr : ExprC] [env : Env] [fds : (Listof FunDefC)]) : Value
+  (match expr
+    [(NumC n) (NumV n)]
+    [(BoolC b) (BoolV b)]
+    [(StringC s) (StringV s)]
+    [(IdC s) (lookup s env)]
+    [(LambdaC par b) (ClosureV par b env)]
+    [(ClosureC p b env) (ClosureV p b env)]
 
-      ;<idC-case>
-     [(AppC f a) (let ([f-val (interp f env fds)])
+    ;<idC-case>
+    [(AppC f a) (let ([f-val (interp f env fds)])
                   (cond
                     [(ClosureV? f-val) (interp (ClosureV-body f-val) (interp-extend-env (ClosureV-params f-val) a env fds) fds)]
                     [else (error 'interp "AAQZ - Incorrect type for f-val passed ~e" f-val)]))]
@@ -112,7 +113,7 @@
                      (cond
                        [(and (NumV? l-val) (NumV? r-val)) (NumV (* (NumV-n l-val) (NumV-n r-val)))]
                        [else (error 'interp "AAQZ - Type mismatch in MultC match, given: ~e ~e" l-val r-val)])))]
-      ))
+    ))
 
 
 ;;get the val bound to a given id in an env
@@ -135,7 +136,7 @@
 (check-equal? (interp (BoolC #f) mt-env '()) (BoolV #f))
 (check-equal? (interp (StringC "consort") mt-env '()) (StringV "consort"))
 
-(define fake-env (extend-env (Binding 'index (NumV 12)) mt-env))
+(define fake-env (extend-env (bind 'index (NumV 12)) mt-env))
 
 (check-equal? (interp (IdC 'index ) fake-env '()) (NumV 12))
 
@@ -146,20 +147,25 @@
 ;Output String
 (define (serialize [v : Value]) : String
   (cond
-    [(NumV? v) (number->string (NumV-n v))]
+    [(NumV? v) (~v (NumV-n v))]
     [(BoolV? v) (cond
                   [(BoolV-b v) "true"]
                   [else "false"])]
     [(StringV? v) (string-append "\"" (StringV-s v) "\"")]
     [(ClosureV? v) "#<procedure>"]
     [(PrimOpV? v) "#<primop>"]))
-    ;[else (error 'serialize " AAQZ: Unsupported val")]))
+;[else (error 'serialize " AAQZ: Unsupported val")]))
 
 
-    (check-equal? (serialize (NumV 12)) "12")
-    (check-equal? (serialize (BoolV #t)) "true")
-    (check-equal? (serialize (BoolV #f)) "false")
-    (check-equal? (serialize (StringV "12")) "\"12\"")
-    (check-equal? (serialize (ClosureV '() (NumC 12) mt-env)) "#<procedure>")
-    (check-equal? (serialize (PrimOpV '+ )) "#<primop>")
+(check-equal? (serialize (NumV 12)) "12")
+(check-equal? (serialize (BoolV #t)) "true")
+(check-equal? (serialize (BoolV #f)) "false")
+(check-equal? (serialize (StringV "12")) "\"12\"")
+(check-equal? (serialize (ClosureV '() (NumC 12) mt-env)) "#<procedure>")
+(check-equal? (serialize (PrimOpV '+ )) "#<primop>")
 
+; interp
+(define ex-closure-1 (ClosureC '(x y z) (PlusC (IdC 'x) (PlusC (IdC 'y) (IdC 'z))) mt-env))
+(define test-env-1 (extend-env (bind 'example (interp ex-closure-1 mt-env '())) mt-env))
+; (check-equal? (interp (AppC ex-closure-1 '(1 2 3)))
+(interp (AppC (IdC 'example) (list (NumC 2) (NumC 2) (NumC 3))) test-env-1 '())
