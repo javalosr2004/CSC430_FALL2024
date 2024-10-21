@@ -69,16 +69,35 @@
           [else (extend-env (bind (first args) (interp (first vals) env fds)) (interp-extend-env (rest args) (rest vals) env fds))])]
     [else (error 'inter-extend-env "AAQZ - Insufficient arguments passed.")]))
 
+
+
+
+(define (+num [ l : Value] [ r : Value]) : Value
+  (cond
+    [(and (NumV? l) (NumV? r)) (NumV (+ (NumV-n l ) (NumV-n r)))] 
+    [else error '+num "AAQZ : both must be numbers : L: ~e R: ~e" l r]))
+    
+     
+
+(define (*num [ l : Value] [ r : Value]) : Value
+  (cond
+    [(and (NumV? l) (NumV? r)) (NumV (* (NumV-n l ) (NumV-n r)))] 
+    [else error '*num "AAQZ : both must be numbers : L: ~e R: ~e" l r]))
+
+
+
 ; This function evaluates an expression given an environment and function definitions
 ; to output a resultant value (Value).
-(define (interp [expr : ExprC] [env : Env] [fds : (Listof FunDefC)]) : Value
-  (match expr
-    [(NumC n) (NumV n)]
-    [(BoolC b) (BoolV b)]
-    [(StringC s) (StringV s)]
-    [(IdC s) (lookup s env)]
-    ;<appC-case>
-    [(AppC f a) (let ([f-val (interp f env fds)])
+ (define (interp [expr : ExprC] [env : Env] [fds : (Listof FunDefC)]) : Value
+    (match expr
+      [(NumC n) (NumV n)]
+      [(BoolC b) (BoolV b)]
+      [(StringC s) (StringV s)]
+      [(IdC s) (lookup s env)]
+      [(LambdaC par b) (ClosureV par b env)]
+
+      ;<idC-case>
+     [(AppC f a) (let ([f-val (interp f env fds)])
                   (cond
                     [(ClosureV? f-val) (interp (ClosureV-body f-val) (interp-extend-env (ClosureV-params f-val) a env fds) fds)]
                     [else (error 'interp "AAQZ - Incorrect type for f-val passed ~e" f-val)]))]
@@ -93,11 +112,14 @@
                      (cond
                        [(and (NumV? l-val) (NumV? r-val)) (NumV (* (NumV-n l-val) (NumV-n r-val)))]
                        [else (error 'interp "AAQZ - Type mismatch in MultC match, given: ~e ~e" l-val r-val)])))]
-    ))
+      ))
 
 
-; This function returns the value for a given symbol passed in
-; if it is found in the given environment.
+;;get the val bound to a given id in an env
+;;takes 2 arguments
+;; symbol whose val needs to be retrieved - for
+;; env is the current environmen that maps the id to its value - env
+;;Output: the val pertaining to sym
 (define (lookup [for : Symbol] [env : Env]) : Value
   (cond
     [(empty? env) (error 'lookup "AAQZ - name not found: ~e" for)]
@@ -113,5 +135,31 @@
 (check-equal? (interp (BoolC #f) mt-env '()) (BoolV #f))
 (check-equal? (interp (StringC "consort") mt-env '()) (StringV "consort"))
 
-(define fake-env (extend-env (bind 'index (NumV 12)) mt-env))
-(check-equal? (interp  (IdC 'index) fake-env '()) (NumV 12))
+(define fake-env (extend-env (Binding 'index (NumV 12)) mt-env))
+
+(check-equal? (interp (IdC 'index ) fake-env '()) (NumV 12))
+
+
+
+;take in a value and return it as a String represenation of that value
+;Input - Val
+;Output String
+(define (serialize [v : Value]) : String
+  (cond
+    [(NumV? v) (number->string (NumV-n v))]
+    [(BoolV? v) (cond
+                  [(BoolV-b v) "true"]
+                  [else "false"])]
+    [(StringV? v) (string-append "\"" (StringV-s v) "\"")]
+    [(ClosureV? v) "#<procedure>"]
+    [(PrimOpV? v) "#<primop>"]))
+    ;[else (error 'serialize " AAQZ: Unsupported val")]))
+
+
+    (check-equal? (serialize (NumV 12)) "12")
+    (check-equal? (serialize (BoolV #t)) "true")
+    (check-equal? (serialize (BoolV #f)) "false")
+    (check-equal? (serialize (StringV "12")) "\"12\"")
+    (check-equal? (serialize (ClosureV '() (NumC 12) mt-env)) "#<procedure>")
+    (check-equal? (serialize (PrimOpV '+ )) "#<primop>")
+
