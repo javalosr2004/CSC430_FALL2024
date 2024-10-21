@@ -62,6 +62,8 @@
       [(BoolC b) (BoolV b)]
       [(StringC s) (StringV s)]
       [(IdC s) (lookup s env)]
+      [(LambdaC par b) (ClosureV par b env)]
+
       ;<idC-case>
       ;<appC-case>
       ;<plusC/multC-case>
