@@ -141,6 +141,18 @@
 (check-equal? (interp (IdC 'index ) fake-env '()) (NumV 12))
 
 
+(define top-env
+  (list
+   (bind '+ (PrimOpV '+))
+   (bind '- (PrimOpV '-))
+   (bind '/ (PrimOpV '/))
+   (bind '* (PrimOpV '*))
+   (bind 'error (PrimOpV 'error))
+   (bind 'equal? (PrimOpV 'equal?))
+   (bind 'true (BoolV #t))
+   (bind 'false (BoolV #f))
+   (bind '<= (PrimOpV '<=))))
+
 
 ;take in a value and return it as a String represenation of that value
 ;Input - Val
