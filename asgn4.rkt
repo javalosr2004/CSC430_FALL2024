@@ -267,6 +267,15 @@
   [(AppC? bind-parse-1) (printf "~e ~e\n" (AppC-fun bind-parse-1) (AppC-args bind-parse-1))])
 ; (check-equal? (parse '{(x y) => {+ x y}}) (LambdaC '(x y) (parse '{+ x y})))
 
+;do primop
+(define testenv (extend-env (bind 'x (NumV 5)) (extend-env (bind 'y (NumV 3)) mt-env)))
+(define test_env (extend-env (bind 'x (NumV 5)) (extend-env (bind 'y (BoolV #t)) mt-env)))
+
+(check-equal? (apply-primop (PrimOpV '+) (list (IdC 'x) (IdC 'y)) testenv) (NumV 8)) 
+(check-exn (regexp (regexp-quote "AAQZ - + expects two numbers, got (NumV 5) and (BoolV #t)"))
+           (lambda () (apply-primop (PrimOpV '+) (list (IdC 'x) (IdC 'y)) test_env)  ))
+(check-exn (regexp (regexp-quote "apply-primop: AAQZ - + expects 2 arguments, got 3 #<continuation-mark-set>"))
+           (lambda () (apply-primop (PrimOpV '+) (list (IdC 'x) (IdC 'y) (IdC 'x)) test_env)  ))
 
 ; interp
 (define ex-closure-1 (ClosureC '(x y z) (PlusC (IdC 'x) (PlusC (IdC 'y) (IdC 'z))) mt-env))
