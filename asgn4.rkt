@@ -105,6 +105,23 @@
     [else error '*num "AAQZ : both must be numbers : L: ~e R: ~e" l r]))
 
 
+;arith-primop apply the primop to the lsit of arg given , within the env
+
+(define (apply-primop [prim : PrimOpV] [args : (Listof ExprC)] [env : Env]) : Value
+  (define op (PrimOpV-op prim))
+  (define eval-args (map (lambda ([arg : ExprC]) (interp arg env)) args))
+  (cond
+    [(symbol=? op '+)
+     (if (equal? (length eval-args) 2)
+         (let ([l (first eval-args)]
+               [r (second eval-args)])
+           (cond
+             [(and (NumV? l) (NumV? r)) (+num l r)]
+             [else (error 'apply-primop "AAQZ - + expects two numbers, got ~e and ~e" l r)]))
+         (error 'apply-primop "AAQZ - + expects 2 arguments, got ~e" (length eval-args)))]
+    [else (error 'apply-primop " AAQZ unknown primop ~e" prim)]))
+  
+
 
 ; This function evaluates an expression given an environment and function definitions
 ; to output a resultant value (Value).
