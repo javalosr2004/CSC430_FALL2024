@@ -63,10 +63,10 @@
 ; This function binds a passed ClosureV params and passed list of expressions, will return a List of bindings with extended environment.
 (define (interp-extend-env [args : (Listof Symbol)] [vals : (Listof ExprC)] [env : Env] [fds : (Listof FunDefC)]) : Env
   (cond
-    [= (length args) (+ (length vals) (length env)) ; Could be optimized, I believe length is linear (not constant) time.
-       ( cond
-          [(and (empty? args) (empty? vals)) env]
-          [else (extend-env (bind (first args) (interp (first vals) env fds)) (interp-extend-env (rest args) (rest vals) env fds))])]
+    [<= (length args) (+ (length vals) (length env)) ; Could be optimized, I believe length is linear (not constant) time.
+        ( cond
+           [(and (empty? args) (empty? vals)) env]
+           [else (extend-env (bind (first args) (interp (first vals) env fds)) (interp-extend-env (rest args) (rest vals) env fds))])]
     [else (error 'inter-extend-env "AAQZ - Insufficient arguments passed.")]))
 
 
@@ -96,7 +96,10 @@
     [(IdC s) (lookup s env)]
     [(LambdaC par b) (ClosureV par b env)]
     [(ClosureC p b env) (ClosureV p b env)]
+    [(Clause id expr) ()]
+    [(BindC  (? list? s) b) (
 
+                             )]
     ;<idC-case>
     [(AppC f a) (let ([f-val (interp f env fds)])
                   (cond
