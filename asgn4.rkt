@@ -154,6 +154,32 @@
    (bind '<= (PrimOpV '<=))))
 
 
+;translate Concrete synt to abstract synt so that the interpreter can run
+(define (parse [s : Sexp]) : ExprC
+  (cond
+    [(number? s) (NumC s)]
+    [(string? s) (StringC s)]
+    [(boolean? s) (BoolC s)]
+    [(symbol? s)
+     (cond
+       [(or (equal? s '+)(equal? s '-)(equal? s '/)(equal? s '*)
+       (equal? s 'error)(equal? s 'equal?)(equal? s 'true)(equal? s 'false)(equal? s '<=))
+       (error 'parse "AAQZ : keyword as id not allowed ~e" s)]
+       [else (IdC s)])]
+    [(list? s)
+     (match s
+       [ '(if ,test, if_cond, else_cond)
+         (IfC (parse test) (parse if_cond) (parse else_cond))
+       [ '(bind, clause, body)
+         ;(parse the bind
+       [ '( (,params ... ) => ,body)
+         ;(LambdaC (parse the param) (parse body))
+       [(list f . args)
+        (AppC (parse f) (map parse args))]
+    [else (error 'parse "AAQZ : inv exp ~e" s)]   
+  
+
+
 ;take in a value and return it as a String represenation of that value
 ;Input - Val
 ;Output String
