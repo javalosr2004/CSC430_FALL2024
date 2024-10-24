@@ -63,12 +63,17 @@
 ; This function binds a passed ClosureV params and passed list of expressions, will return a List of bindings with extended environment.
 (define (interp-extend-env [args : (Listof Symbol)] [vals : (Listof ExprC)] [env : Env] [fds : (Listof FunDefC)]) : Env
   (cond
-    [= (length args) (+ (length vals) (length env)) ; Could be optimized, I believe length is linear (not constant) time.
-       ( cond
-          [(and (empty? args) (empty? vals)) env]
-          [else (extend-env (bind (first args) (interp (first vals) env fds)) (interp-extend-env (rest args) (rest vals) env fds))])]
+    [<= (length args) (+ (length vals) (length env)) ; Could be optimized, I believe length is linear (not constant) time.
+        ( cond
+           [(and (empty? args) (empty? vals)) env]
+           [else (extend-env (bind (first args) (interp (first vals) env fds)) (interp-extend-env (rest args) (rest vals) env fds))])]
     [else (error 'inter-extend-env "AAQZ - Insufficient arguments passed.")]))
 
+; This function binds a passed list of clauses and extends the environment that is passed, will return the extended environment.
+(define (interp-extend-env-clauses [clauses : (Listof Clause)] [env : Env] [fds : (Listof FunDefC)]) : Env
+  (cond
+    [(empty? clauses) (error 'inter-extend-env "AAQZ - Insufficient arguments passed.")]
+    [else (extend-env (bind (Clause-id (first clauses)) (interp (Clause-expr (first clauses)) env fds)) (interp-extend-env-clauses (rest clauses) env fds))]))
 
 
 
@@ -96,7 +101,8 @@
     [(IdC s) (lookup s env)]
     [(LambdaC par b) (ClosureV par b env)]
     [(ClosureC p b env) (ClosureV p b env)]
-
+    [(Clause id expr) (error 'interp "Method not implemented yet.")]
+    [(BindC  (? list? s) b) (error 'interp "Method not implemented yet.")]
     ;<idC-case>
     [(AppC f a) (let ([f-val (interp f env fds)])
                   (cond
@@ -156,29 +162,24 @@
 
 ;translate Concrete synt to abstract synt so that the interpreter can run
 (define (parse [s : Sexp]) : ExprC
-  (cond
-    [(number? s) (NumC s)]
-    [(string? s) (StringC s)]
-    [(boolean? s) (BoolC s)]
-    [(symbol? s)
+  (match s
+    [(? real? n) (NumC n)]
+    [(? string? str) (StringC str)]
+    [(? boolean? bool) (BoolC bool)]
+    [(? symbol? sym)
      (cond
-       [(or (equal? s '+)(equal? s '-)(equal? s '/)(equal? s '*)
-       (equal? s 'error)(equal? s 'equal?)(equal? s 'true)(equal? s 'false)(equal? s '<=))
-       (error 'parse "AAQZ : keyword as id not allowed ~e" s)]
-       [else (IdC s)])]
-    [(list? s)
-     (match s
-       [ '(if ,test, if_cond, else_cond)
-         (IfC (parse test) (parse if_cond) (parse else_cond))
-       [ '(bind, clause, body)
-         ;(parse the bind
-       [ '( (,params ... ) => ,body)
-         ;(LambdaC (parse the param) (parse body))
-       [(list f . args)
-        (AppC (parse f) (map parse args))]
-    [else (error 'parse "AAQZ : inv exp ~e" s)]   
-  
-
+       [(or (equal? sym '+) (equal? sym '-) (equal? sym '/) (equal? sym '*)
+            (equal? sym 'error) (equal? sym 'equal?) (equal? sym 'true) (equal? sym 'false)
+            (equal? sym '<=))
+        (error 'parse "AAQZ : keyword as id not allowed ~e" sym)]
+       [else (IdC sym)])]
+    [(list 'if test if_cond else_cond)
+     (IfC (parse test) (parse if_cond) (parse else_cond))]
+    [(list fun args ...) (AppC (parse fun) (map parse args))]
+    ; (cond
+    ; ;    [(symbol=? fun 'ifleq0?) (error 'parse "AAQZ cant use ifleq0 as id ~e" s)]
+    ; [else ()])]
+    [else (error 'parse "AAQZ : inv exp ~e" s)]))
 
 ;take in a value and return it as a String represenation of that value
 ;Input - Val
@@ -194,6 +195,12 @@
     [(PrimOpV? v) "#<primop>"]))
 ;[else (error 'serialize " AAQZ: Unsupported val")]))
 
+; This function accepts an s-expression and calls the parse and then the interp function.
+(: top-interp (Sexp -> Value))
+(define (top-interp sexp)
+  (interp (parse sexp ) mt-env '()))
+
+; Test Cases
 
 (check-equal? (serialize (NumV 12)) "12")
 (check-equal? (serialize (BoolV #t)) "true")
@@ -201,6 +208,10 @@
 (check-equal? (serialize (StringV "12")) "\"12\"")
 (check-equal? (serialize (ClosureV '() (NumC 12) mt-env)) "#<procedure>")
 (check-equal? (serialize (PrimOpV '+ )) "#<primop>")
+
+; Parser
+; (check-equal? (parse '{}))
+
 
 ; interp
 (define ex-closure-1 (ClosureC '(x y z) (PlusC (IdC 'x) (PlusC (IdC 'y) (IdC 'z))) mt-env))
