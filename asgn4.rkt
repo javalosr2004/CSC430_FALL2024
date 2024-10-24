@@ -30,7 +30,7 @@
 (struct ClosureC ([params : (Listof Symbol)]
                   [body : ExprC]
                   [env : Env]))
-(struct PrimOpC ([op : Symbol] [args : (Listof ExprC)]) #:transparent)
+(struct PrimOpC ([op : Symbol]) #:transparent)
 (struct Clause ([id : Symbol] [expr : ExprC]))
 
 (define-type Env (Listof Binding))
@@ -54,14 +54,15 @@
 (define extend-env cons)
 
 ; Top level environment for all evaluation calls.
+(: top-env Env)
 (define top-env
   (list
-   (bind '+ (PrimOpV '+))
-   (bind '- (PrimOpV '-))
-   (bind '/ (PrimOpV '/))
-   (bind '* (PrimOpV '*))
-   (bind 'error (PrimOpV 'error))
-   (bind 'equal? (PrimOpV 'equal?))
+   (bind '+ (PrimOpV '+ ))
+   (bind '- (PrimOpV '- ))
+   (bind '/ (PrimOpV '/ ))
+   (bind '* (PrimOpV '* ))
+   (bind 'error (PrimOpV 'error ))
+   (bind 'equal? (PrimOpV 'equal? ))
    (bind 'true (BoolV #t))
    (bind 'false (BoolV #f))
    (bind '<= (PrimOpV '<=))))
@@ -178,16 +179,24 @@
     [(? real? n) (NumC n)]
     [(? string? str) (StringC str)]
     [(? boolean? bool) (BoolC bool)]
-    [(? symbol? sym)
-     (cond
-       [(or (equal? sym '+) (equal? sym '-) (equal? sym '/) (equal? sym '*)
-            (equal? sym 'error) (equal? sym 'equal?) (equal? sym 'true) (equal? sym 'false)
-            (equal? sym '<=))
-        (PrimOpC sym)]
-       [else (IdC sym)])]
+    [(? symbol? sym) (IdC sym)]
+    ; (cond
+    ; [(or (equal? sym '+) (equal? sym '-) (equal? sym '/) (equal? sym '*)
+    ;         (equal? sym 'error) (equal? sym 'equal?) (equal? sym 'true) (equal? sym 'false)
+    ;         (equal? sym '<=))
+    ; [else (IdC sym)])]
     [(list 'if test if_cond else_cond)
      (IfC (parse test) (parse if_cond) (parse else_cond))]
-    [(list 'bind (list args ... ) body) (printf "~e ~e\n" args body)(NumC 9)]
+    [(list 'bind (list (list id '= expr) ...) body)
+     ;; Print each binding
+     (printf "~e ~e ~e\n" id expr body)
+     ;  (for-each (λ (binding)
+     ;              (printf "~a : ~a\n" (first binding) (second binding)))
+     ;            (map list id expr))
+     ;; Print the body
+     (NumC 9)
+     ;; Additional processing can go here
+     ]
     [(list (list (? symbol? params) ...) '=> body ...) (LambdaC (cast params (Listof Symbol)) (parse body))]
     [(list fun args ...) (AppC (parse fun) (map parse args))]
     ; (cond
@@ -224,23 +233,21 @@
 (check-equal? (serialize (PrimOpV '+ )) "#<primop>")
 
 ; Parser
-; (printf "~e" '{() => {{bind
-;                        [z = {+ 9 14}]
-;                        [y = 98]
-;                        {+ z y}}}})
-(define ex-parse-1 (parse '{() => {{bind
-                       [z = {+ 9 14}]
-                       [y = 98]
-                       {+ z y}}}}))
+(define bind-parse-1 (parse '{bind
+                              [z = {+ 9 14}]
+                              [y = 98]
+                              {+ z y}}))
+; (check-equal? (bind-parse-1) (AppC ))
+
 ; (parse '{() => {{bind
 ;                        [z = {+ 9 14}]
 ;                        [y = 98]
 ;                        {+ z y}}}}))
-(printf "~e" ex-parse-1)
+; (printf "~e" ex-parse-1)
 
 ; (define ex-parse-1 (parse '{+ x y}))
-; (cond
-;   [(AppC? ex-parse-1) (printf "~e ~e\n" (AppC-fun ex-parse-1) (AppC-args ex-parse-1))])
+(cond
+  [(AppC? bind-parse-1) (printf "~e ~e\n" (AppC-fun bind-parse-1) (AppC-args bind-parse-1))])
 ; (check-equal? (parse '{(x y) => {+ x y}}) (LambdaC '(x y) (parse '{+ x y})))
 
 
