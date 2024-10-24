@@ -25,12 +25,12 @@
 (struct PlusC ([l : ExprC] [r : ExprC]))
 (struct MultC ([l : ExprC] [r : ExprC]))
 (struct IfC ([test : ExprC] [if_cond : ExprC] [else_cond : ExprC]))
-(struct BindC ([clauses : (Listof Clause)] [body : ExprC]))
+(struct BindC ([clauses : (Listof Clause)] [body : ExprC]) #:transparent)
 (struct LambdaC ([params : (Listof Symbol)] [body : ExprC]))
 (struct ClosureC ([params : (Listof Symbol)]
                   [body : ExprC]
                   [env : Env]))
-(struct PrimOpC ([op : Symbol]))
+(struct PrimOpC ([op : Symbol] [args : (Listof ExprC)]) #:transparent)
 (struct Clause ([id : Symbol] [expr : ExprC]))
 
 (define-type Env (Listof Binding))
@@ -52,6 +52,20 @@
 
 (define mt-env '())
 (define extend-env cons)
+
+; Top level environment for all evaluation calls.
+(define top-env
+  (list
+   (bind '+ (PrimOpV '+))
+   (bind '- (PrimOpV '-))
+   (bind '/ (PrimOpV '/))
+   (bind '* (PrimOpV '*))
+   (bind 'error (PrimOpV 'error))
+   (bind 'equal? (PrimOpV 'equal?))
+   (bind 'true (BoolV #t))
+   (bind 'false (BoolV #f))
+   (bind '<= (PrimOpV '<=))))
+
 
 ; This function binds all passed names to it's associated value, will reutrn a Binding.
 ; (define (bind-all [args : (Listof Symbol)] [vals : (Listof Value)])
@@ -103,7 +117,7 @@
     [(ClosureC p b env) (ClosureV p b env)]
     [(Clause id expr) (error 'interp "Method not implemented yet.")]
     [(BindC  (? list? s) b) (error 'interp "Method not implemented yet.")]
-    
+
     [(IfC test-expr then-expr else-expr)
      (define test-val (interp test-expr env))
      (cond
@@ -112,7 +126,8 @@
           [(BoolV-b test-val) (interp then-expr env)]
           [else (interp else-expr env)])]
        [else (error 'interp "AAQZ - test didnt produce bool ~e" test-val)])]
-    
+
+    ; [(LambdaC params body) ()]
     [(AppC f a) (let ([f-val (interp f env )])
                   (cond
                     [(ClosureV? f-val) (interp (ClosureV-body f-val) (interp-extend-env (ClosureV-params f-val) a env) )]
@@ -156,18 +171,6 @@
 (check-equal? (interp (IdC 'index ) fake-env ) (NumV 12))
 
 
-(define top-env
-  (list
-   (bind '+ (PrimOpV '+))
-   (bind '- (PrimOpV '-))
-   (bind '/ (PrimOpV '/))
-   (bind '* (PrimOpV '*))
-   (bind 'error (PrimOpV 'error))
-   (bind 'equal? (PrimOpV 'equal?))
-   (bind 'true (BoolV #t))
-   (bind 'false (BoolV #f))
-   (bind '<= (PrimOpV '<=))))
-
 
 ;translate Concrete synt to abstract synt so that the interpreter can run
 (define (parse [s : Sexp]) : ExprC
@@ -180,10 +183,12 @@
        [(or (equal? sym '+) (equal? sym '-) (equal? sym '/) (equal? sym '*)
             (equal? sym 'error) (equal? sym 'equal?) (equal? sym 'true) (equal? sym 'false)
             (equal? sym '<=))
-        (error 'parse "AAQZ : keyword as id not allowed ~e" sym)]
+        (PrimOpC sym)]
        [else (IdC sym)])]
     [(list 'if test if_cond else_cond)
      (IfC (parse test) (parse if_cond) (parse else_cond))]
+    [(list 'bind (list args ... ) body) (printf "~e ~e\n" args body)(NumC 9)]
+    [(list (list (? symbol? params) ...) '=> body ...) (LambdaC (cast params (Listof Symbol)) (parse body))]
     [(list fun args ...) (AppC (parse fun) (map parse args))]
     ; (cond
     ; ;    [(symbol=? fun 'ifleq0?) (error 'parse "AAQZ cant use ifleq0 as id ~e" s)]
@@ -219,7 +224,24 @@
 (check-equal? (serialize (PrimOpV '+ )) "#<primop>")
 
 ; Parser
-; (check-equal? (parse '{}))
+; (printf "~e" '{() => {{bind
+;                        [z = {+ 9 14}]
+;                        [y = 98]
+;                        {+ z y}}}})
+(define ex-parse-1 (parse '{() => {{bind
+                       [z = {+ 9 14}]
+                       [y = 98]
+                       {+ z y}}}}))
+; (parse '{() => {{bind
+;                        [z = {+ 9 14}]
+;                        [y = 98]
+;                        {+ z y}}}}))
+(printf "~e" ex-parse-1)
+
+; (define ex-parse-1 (parse '{+ x y}))
+; (cond
+;   [(AppC? ex-parse-1) (printf "~e ~e\n" (AppC-fun ex-parse-1) (AppC-args ex-parse-1))])
+; (check-equal? (parse '{(x y) => {+ x y}}) (LambdaC '(x y) (parse '{+ x y})))
 
 
 ; interp
