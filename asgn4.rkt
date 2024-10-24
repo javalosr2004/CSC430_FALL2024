@@ -61,19 +61,19 @@
 ;                                       )]))
 
 ; This function binds a passed ClosureV params and passed list of expressions, will return a List of bindings with extended environment.
-(define (interp-extend-env [args : (Listof Symbol)] [vals : (Listof ExprC)] [env : Env] [fds : (Listof FunDefC)]) : Env
+(define (interp-extend-env [args : (Listof Symbol)] [vals : (Listof ExprC)] [env : Env] ) : Env
   (cond
     [<= (length args) (+ (length vals) (length env)) ; Could be optimized, I believe length is linear (not constant) time.
         ( cond
            [(and (empty? args) (empty? vals)) env]
-           [else (extend-env (bind (first args) (interp (first vals) env fds)) (interp-extend-env (rest args) (rest vals) env fds))])]
+           [else (extend-env (bind (first args) (interp (first vals) env )) (interp-extend-env (rest args) (rest vals) env ))])]
     [else (error 'inter-extend-env "AAQZ - Insufficient arguments passed.")]))
 
 ; This function binds a passed list of clauses and extends the environment that is passed, will return the extended environment.
-(define (interp-extend-env-clauses [clauses : (Listof Clause)] [env : Env] [fds : (Listof FunDefC)]) : Env
+(define (interp-extend-env-clauses [clauses : (Listof Clause)] [env : Env] ) : Env
   (cond
     [(empty? clauses) (error 'inter-extend-env "AAQZ - Insufficient arguments passed.")]
-    [else (extend-env (bind (Clause-id (first clauses)) (interp (Clause-expr (first clauses)) env fds)) (interp-extend-env-clauses (rest clauses) env fds))]))
+    [else (extend-env (bind (Clause-id (first clauses)) (interp (Clause-expr (first clauses)) env )) (interp-extend-env-clauses (rest clauses) env ))]))
 
 
 
@@ -93,7 +93,7 @@
 
 ; This function evaluates an expression given an environment and function definitions
 ; to output a resultant value (Value).
-(define (interp [expr : ExprC] [env : Env] [fds : (Listof FunDefC)]) : Value
+(define (interp [expr : ExprC] [env : Env] ) : Value
   (match expr
     [(NumC n) (NumV n)]
     [(BoolC b) (BoolV b)]
@@ -103,19 +103,28 @@
     [(ClosureC p b env) (ClosureV p b env)]
     [(Clause id expr) (error 'interp "Method not implemented yet.")]
     [(BindC  (? list? s) b) (error 'interp "Method not implemented yet.")]
-    ;<idC-case>
-    [(AppC f a) (let ([f-val (interp f env fds)])
+    
+    [(IfC test-expr then-expr else-expr)
+     (define test-val (interp test-expr env))
+     (cond
+       [(BoolV? test-val)
+        (cond
+          [(BoolV-b test-val) (interp then-expr env)]
+          [else (interp else-expr env)])]
+       [else (error 'interp "AAQZ - test didnt produce bool ~e" test-val)])]
+    
+    [(AppC f a) (let ([f-val (interp f env )])
                   (cond
-                    [(ClosureV? f-val) (interp (ClosureV-body f-val) (interp-extend-env (ClosureV-params f-val) a env fds) fds)]
+                    [(ClosureV? f-val) (interp (ClosureV-body f-val) (interp-extend-env (ClosureV-params f-val) a env) )]
                     [else (error 'interp "AAQZ - Incorrect type for f-val passed ~e" f-val)]))]
     ;<plusC/multC-case>
-    [(PlusC l r) (let ([l-val (interp l env fds)])
-                   (let ([r-val (interp r env fds)])
+    [(PlusC l r) (let ([l-val (interp l env )])
+                   (let ([r-val (interp r env )])
                      (cond
                        [(and (NumV? l-val) (NumV? r-val)) (NumV (+ (NumV-n l-val) (NumV-n r-val)))]
                        [else (error 'interp "AAQZ - Type mismatch in PlusC match, given: ~e ~e" l-val r-val)])))]
-    [(MultC l r) (let ([l-val (interp l env fds)])
-                   (let ([r-val (interp r env fds)])
+    [(MultC l r) (let ([l-val (interp l env )])
+                   (let ([r-val (interp r env )])
                      (cond
                        [(and (NumV? l-val) (NumV? r-val)) (NumV (* (NumV-n l-val) (NumV-n r-val)))]
                        [else (error 'interp "AAQZ - Type mismatch in MultC match, given: ~e ~e" l-val r-val)])))]
@@ -138,13 +147,13 @@
 
 ; Test Cases
 ; Interp
-(check-equal? (interp (NumC 3) mt-env '()) (NumV 3))
-(check-equal? (interp (BoolC #f) mt-env '()) (BoolV #f))
-(check-equal? (interp (StringC "consort") mt-env '()) (StringV "consort"))
+(check-equal? (interp (NumC 3) mt-env ) (NumV 3))
+(check-equal? (interp (BoolC #f) mt-env ) (BoolV #f))
+(check-equal? (interp (StringC "consort") mt-env ) (StringV "consort"))
 
 (define fake-env (extend-env (bind 'index (NumV 12)) mt-env))
 
-(check-equal? (interp (IdC 'index ) fake-env '()) (NumV 12))
+(check-equal? (interp (IdC 'index ) fake-env ) (NumV 12))
 
 
 (define top-env
@@ -198,7 +207,7 @@
 ; This function accepts an s-expression and calls the parse and then the interp function.
 (: top-interp (Sexp -> Value))
 (define (top-interp sexp)
-  (interp (parse sexp ) mt-env '()))
+  (interp (parse sexp ) mt-env ))
 
 ; Test Cases
 
@@ -215,6 +224,6 @@
 
 ; interp
 (define ex-closure-1 (ClosureC '(x y z) (PlusC (IdC 'x) (PlusC (IdC 'y) (IdC 'z))) mt-env))
-(define test-env-1 (extend-env (bind 'example (interp ex-closure-1 mt-env '())) mt-env))
+(define test-env-1 (extend-env (bind 'example (interp ex-closure-1 mt-env )) mt-env))
 ; (check-equal? (interp (AppC ex-closure-1 '(1 2 3)))
-(interp (AppC (IdC 'example) (list (NumC 2) (NumC 2) (NumC 3))) test-env-1 '())
+(interp (AppC (IdC 'example) (list (NumC 2) (NumC 2) (NumC 3))) test-env-1 )
